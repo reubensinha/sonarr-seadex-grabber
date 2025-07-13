@@ -1,33 +1,51 @@
 """Configuration for Sonarr and external metadata services"""
 
+from pathlib import Path
+import yaml
+
+# Get the directory where this script is located
+_SCRIPT_DIR = Path(__file__).parent
+
+
+# Load configuration from YAML file
+def load_config():
+    """Load configuration from config.yaml file"""
+    config_file = _SCRIPT_DIR / "config.yaml"
+
+    if not config_file.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_file}")
+
+    with open(config_file, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+# Load the configuration
+_config = load_config()
+
 # Data directory for persistent cache
-DATA_DIR = "data"
-SONARR_ANILIST_MAP_FILE = "sonarr_anilist_map.json"
-SEEN_TRS_FILE = "seen_trs.json"
-KNOWN_SERIES_FILE = "known_series.json"
+DATA_DIR = _config["data"]["dir"]
+KNOWN_SERIES_FILE = _config["data"]["known_series_file"]
 
 # Scheduling
-SYNC_INTERVAL = 60 * 60 * 24     # 24 hours in seconds
+SYNC_INTERVAL = _config["scheduling"]["sync_interval"]
 
 # Sonarr
-SONARR_URL = "http://localhost:8989"  # Change to your Sonarr host
-SONARR_API_KEY = "your_sonarr_api_key"
+SONARR_URL = _config["sonarr"]["url"]
+SONARR_API_KEY = _config["sonarr"]["api_key"]
 
 # AniList
-ANILIST_API_URL = "https://graphql.anilist.co"
+ANILIST_API_URL = _config["anilist"]["api_url"]
 
 # Seadex
-COLLECTIONS_URL = "https://releases.moe/api/collections/entries/records"
-TORRENT_URL = "https://releases.moe/api/collections/torrents/records"
-
-
+COLLECTIONS_URL = _config["seadex"]["collections_url"]
+TORRENT_URL = _config["seadex"]["torrent_url"]
 
 # qBittorrent
-QB_URL = "http://localhost:8080"  # Replace with your actual qBittorrent URL
-QB_USER = "admin"  # Replace with your actual username
-QB_PASS = "adminadmin"  # Replace with your actual password
+QB_URL = _config["qbittorrent"]["url"]
+QB_USER = _config["qbittorrent"]["username"]
+QB_PASS = _config["qbittorrent"]["password"]
 
 # Webhook Server
-WEBHOOK_HOST = "localhost"
-WEBHOOK_PORT = 8765
-USE_WEBHOOK = True  # Set to False to disable webhook and use only scheduled updates
+WEBHOOK_HOST = _config["webhook"]["host"]
+WEBHOOK_PORT = _config["webhook"]["port"]
+USE_WEBHOOK = _config["webhook"]["enabled"]

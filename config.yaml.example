@@ -1,0 +1,37 @@
+# Configuration for Sonarr and external metadata services
+# Copy this file to config.yaml and update the values according to your setup
+
+# Data directory for persistent cache
+data:
+  dir: "data"
+  known_series_file: "known_series.json"
+
+# Scheduling (in seconds)
+scheduling:
+  sync_interval: 86400  # 24 hours in seconds
+
+# Sonarr configuration
+sonarr:
+  url: "http://localhost:8989"  # Change to your Sonarr host
+  api_key: "your_sonarr_api_key"  # Replace with your actual Sonarr API key
+
+# AniList configuration
+anilist:
+  api_url: "https://graphql.anilist.co"
+
+# Seadex configuration
+seadex:
+  collections_url: "https://releases.moe/api/collections/entries/records"
+  torrent_url: "https://releases.moe/api/collections/torrents/records"
+
+# qBittorrent configuration
+qbittorrent:
+  url: "http://localhost:8080"  # Replace with your actual qBittorrent URL
+  username: "admin"  # Replace with your actual username
+  password: "adminadmin"  # Replace with your actual password
+
+# Webhook Server configuration
+webhook:
+  host: "localhost"
+  port: 8765
+  enabled: true  # Set to false to disable webhook and use only scheduled updates
