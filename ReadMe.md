@@ -2,4 +2,4 @@
 
 ## Planned
 
-[ ] Move config.py to more persistent location.
+- [ ] Move config.py to more persistent location.
