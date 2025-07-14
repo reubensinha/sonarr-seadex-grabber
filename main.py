@@ -16,6 +16,7 @@ from config import (
     SCORING_IS_BEST_WEIGHT,
     SCORING_DUAL_AUDIO_WEIGHT,
     SCORING_TRACKER_WEIGHTS,
+    STARTUP_SCAN
 )
 from webhook_server import WebhookServer
 
@@ -314,7 +315,9 @@ def main():
 
         # Run initial update
         log("Running initial update...")
-        update_all_series()
+
+        if STARTUP_SCAN:
+            update_all_series()
 
         # Start scheduled updates in a separate thread
         log("Starting scheduled updates thread...")

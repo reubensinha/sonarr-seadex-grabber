@@ -65,7 +65,7 @@ class SeadexClient:
                 if not info_hash or not url:
                     log(f"Skipping TRS {trs_id} - missing essential data")
                     continue
-                
+
                 # Check if this is a private tracker torrent with redacted info hash
                 if info_hash == "<redacted>":
                     private = True
@@ -82,7 +82,7 @@ class SeadexClient:
                     is_best=is_best,
                     dual_audio=dual_audio,
                     chosen=False,
-                    private=private
+                    private=private,
                 )
 
                 torrents.append(trs)

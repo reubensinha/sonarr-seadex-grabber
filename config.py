@@ -22,6 +22,9 @@ def load_config():
 # Load the configuration
 _config = load_config()
 
+# General settings
+STARTUP_SCAN = _config["general"].get("startup_scan", True)
+
 # Data directory for persistent cache
 DATA_DIR = _config["data"]["dir"]
 KNOWN_SERIES_FILE = _config["data"]["known_series_file"]
