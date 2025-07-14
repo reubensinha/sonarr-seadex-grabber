@@ -11,7 +11,7 @@ class AniListClient:
 
     def search_anilist(self, title) -> list[AniListSeries]:
         """
-        Search AniList for a series by title and return the list of series. 
+        Search AniList for a series by title and return the list of series.
         Each season of the series may be a serparate entry.
         """
 

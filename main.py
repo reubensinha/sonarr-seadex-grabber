@@ -1,5 +1,6 @@
 """Main script for Seaex Sonarr Monitor."""
 
+from math import inf
 import time
 import threading
 from data_class import Series, AniListSeries, Trs
@@ -12,6 +13,9 @@ from config import (
     WEBHOOK_HOST,
     WEBHOOK_PORT,
     USE_WEBHOOK,
+    SCORING_IS_BEST_WEIGHT,
+    SCORING_DUAL_AUDIO_WEIGHT,
+    SCORING_TRACKER_WEIGHTS,
 )
 from webhook_server import WebhookServer
 
@@ -94,20 +98,46 @@ def merge_anilist_ids(
 
 
 def score_torrent(torrent: Trs) -> int:
-    """Score a torrent based on is_best, dual_audio, and tracker."""
+    """Score a torrent based on configurable weights for is_best, dual_audio, and tracker."""
     score = 0
 
-    # Base scoring
+    # Apply configurable weights
     if torrent.is_best:
-        score += 2  # is_best gets 2 points
+        score += SCORING_IS_BEST_WEIGHT
     if torrent.dual_audio:
-        score += 1  # dual_audio gets 1 point
+        score += SCORING_DUAL_AUDIO_WEIGHT
 
-    # Penalty for non-Nyaa trackers
-    if torrent.tracker != "Nyaa":
-        score -= 10  # -10 points for non-Nyaa trackers
+    # Apply tracker-specific scoring
+    tracker_score = SCORING_TRACKER_WEIGHTS.get(
+        torrent.tracker, SCORING_TRACKER_WEIGHTS.get("default", 0)
+    )
+    score += tracker_score
 
+    # Note: Private torrents are included in scoring but handled differently in download
     return score
+
+
+def get_scoring_breakdown(torrent: Trs) -> str:
+    """Get detailed scoring breakdown for logging purposes."""
+    breakdown = []
+
+    if torrent.is_best:
+        breakdown.append(f"is_best: +{SCORING_IS_BEST_WEIGHT}")
+    if torrent.dual_audio:
+        breakdown.append(f"dual_audio: +{SCORING_DUAL_AUDIO_WEIGHT}")
+
+    tracker_score = SCORING_TRACKER_WEIGHTS.get(
+        torrent.tracker, SCORING_TRACKER_WEIGHTS.get("default", 0)
+    )
+    if tracker_score != 0:
+        breakdown.append(
+            f"tracker({torrent.tracker}): {'+' if tracker_score >= 0 else ''}{tracker_score}"
+        )
+
+    if torrent.private:
+        breakdown.append("private")
+
+    return " | ".join(breakdown) if breakdown else "no bonuses"
 
 
 def choose_best_and_merge_torrents(
@@ -141,6 +171,9 @@ def choose_best_and_merge_torrents(
     for torrent_id, found_torrent in found_torrents_dict.items():
         if torrent_id not in known_torrents_dict:
             merged_torrents.append(found_torrent)
+            if found_torrent.private:
+                log(f"Skipping torrent {torrent_id} - private tracker")
+                continue
             candidates_for_best.append(found_torrent)
             log(f"Added new torrent: {torrent_id}")
 
@@ -161,8 +194,7 @@ def choose_best_and_merge_torrents(
     if best_torrent.id in original_chosen_status:
         log(
             f"Best torrent {best_torrent.id} was already chosen - no redownload needed "
-            f"(score: {best_score}, is_best: {best_torrent.is_best}, "
-            f"dual_audio: {best_torrent.dual_audio}, tracker: {best_torrent.tracker})"
+            f"(score: {best_score} [{get_scoring_breakdown(best_torrent)}])"
         )
         return None, merged_torrents
 
@@ -171,8 +203,7 @@ def choose_best_and_merge_torrents(
 
     log(
         f"Best torrent (from {len(candidates_for_best)} candidates): {best_torrent.id} "
-        f"(score: {best_score}, is_best: {best_torrent.is_best}, "
-        f"dual_audio: {best_torrent.dual_audio}, tracker: {best_torrent.tracker})"
+        f"(score: {best_score} [{get_scoring_breakdown(best_torrent)}])"
     )
     return best_torrent, merged_torrents
 
@@ -213,7 +244,7 @@ def update_all_series():
                 log(
                     f"Best release for AniList ID {anilist_entry.anilist_id}: {best.id}"
                 )
-                send_to_qbittorrent(best.info_hash)
+                send_to_qbittorrent(best.info_hash, best.private, best.url)
 
     save_json(KNOWN_SERIES_FILE, series)
 

@@ -26,6 +26,16 @@ seadex:
   collections_url: "https://releases.moe/api/collections/entries/records"
   torrent_url: "https://releases.moe/api/collections/torrents/records"
 
+# Torrent scoring configuration
+scoring:
+  is_best_weight: 2        # Points for torrents marked as "best"
+  dual_audio_weight: 1     # Points for dual audio torrents
+  tracker_weights:         # Points per tracker (can be negative for penalties)
+    "Nyaa": 10             # Prefer Nyaa
+    "AB": -10              # penalty for AB
+    "default": 0           # Default penalty for unknown trackers
+  include_private: true    # Whether to include private tracker torrents in scoring
+
 # qBittorrent configuration
 qbittorrent:
   url: "http://localhost:8080"  # Replace with your actual qBittorrent URL

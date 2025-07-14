@@ -32,22 +32,25 @@ class SonarrClient:
             filter_msg.append(f"type={SONARR_SERIES_TYPE}")
         if SONARR_TAGS:
             filter_msg.append(f"tags={SONARR_TAGS}")
-        
+
         if filter_msg:
             log(f"Filtering series by: {', '.join(filter_msg)}")
 
         series_list = []
         filtered_count = 0
-        
+
         for series in response_list:
             if not series.get("monitored", False):
                 continue
-                
+
             # Filter by series type if configured
-            if SONARR_SERIES_TYPE and series.get("seriesType", "").lower() != SONARR_SERIES_TYPE.lower():
+            if (
+                SONARR_SERIES_TYPE
+                and series.get("seriesType", "").lower() != SONARR_SERIES_TYPE.lower()
+            ):
                 filtered_count += 1
                 continue
-                
+
             # Filter by tags if configured
             if SONARR_TAGS:
                 series_tags = series.get("tags", [])
@@ -80,6 +83,6 @@ class SonarrClient:
 
         if filtered_count > 0:
             log(f"Filtered out {filtered_count} series based on configuration")
-        
+
         log(f"Found {len(series_list)} monitored series matching criteria")
         return series_list

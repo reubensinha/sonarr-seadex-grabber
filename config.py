@@ -42,6 +42,11 @@ ANILIST_API_URL = _config["anilist"]["api_url"]
 COLLECTIONS_URL = _config["seadex"]["collections_url"]
 TORRENT_URL = _config["seadex"]["torrent_url"]
 
+# Scoring
+SCORING_IS_BEST_WEIGHT = _config["scoring"]["is_best_weight"]
+SCORING_DUAL_AUDIO_WEIGHT = _config["scoring"]["dual_audio_weight"]
+SCORING_TRACKER_WEIGHTS = _config["scoring"]["tracker_weights"]
+
 # qBittorrent
 QB_URL = _config["qbittorrent"]["url"]
 QB_USER = _config["qbittorrent"]["username"]

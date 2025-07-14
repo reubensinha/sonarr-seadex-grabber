@@ -21,8 +21,12 @@ def load_json(filename, default=None) -> Union[list[Series], Any]:
             data = json.load(f)
             # Convert dictionaries back to Series objects if the data contains series
             # Check if it's a list of dictionaries with series-like structure
-            if (isinstance(data, list) and len(data) > 0 and 
-                isinstance(data[0], dict) and 'sonarr_id' in data[0]):
+            if (
+                isinstance(data, list)
+                and len(data) > 0
+                and isinstance(data[0], dict)
+                and "sonarr_id" in data[0]
+            ):
                 return [Series.from_dict(item) for item in data]
             return data
         except json.JSONDecodeError:
@@ -34,7 +38,7 @@ def save_json(filename, data):
     path = os.path.join(DATA_DIR, filename)
     with open(path, "w", encoding="utf-8") as f:
         # Convert Series objects to dictionaries for JSON serialization
-        if isinstance(data, list) and len(data) > 0 and hasattr(data[0], 'to_dict'):
+        if isinstance(data, list) and len(data) > 0 and hasattr(data[0], "to_dict"):
             serialized_data = [item.to_dict() for item in data]
             json.dump(serialized_data, f, indent=2)
         else:

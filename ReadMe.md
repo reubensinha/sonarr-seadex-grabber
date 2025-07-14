@@ -28,6 +28,15 @@ pip install -r requirements.txt
      series_type: "anime"              # Filter by series type (optional)
      tags: [1, 2]                      # Filter by tag IDs (optional)
 
+   # Torrent scoring configuration
+   scoring:
+     is_best_weight: 2                 # Points for "best" torrents
+     dual_audio_weight: 1              # Points for dual audio
+     tracker_weights:
+       "Nyaa": 0                       # Baseline tracker
+       "AnimeTosho": -2                # Small penalty
+       "default": -10                  # Default penalty
+
    # qBittorrent configuration
    qbittorrent:
      url: "http://your-qbittorrent-host:8080"
@@ -52,6 +61,12 @@ pip install -r requirements.txt
   - `tags`: Filter series by tag IDs (use tag numbers, not names)
 - **AniList**: API endpoint for anime metadata
 - **Seadex**: Torrent collection URLs
+- **Scoring**: Configure how torrents are ranked for selection
+  - `is_best_weight`: Points awarded for "best" torrents (default: 2)
+  - `dual_audio_weight`: Points awarded for dual audio (default: 1)
+  - `tracker_weights`: Points per tracker, can be positive or negative
+    - Use "default" key for unknown trackers
+    - Example: `{"Nyaa": 0, "AnimeTosho": -2, "default": -10}`
 - **qBittorrent**:
   - Connection settings for your torrent client
   - `category`: Automatically assign downloads to a specific category

@@ -1,5 +1,6 @@
 """Client for interacting with Seadex API."""
 
+from math import inf
 import requests
 from data_class import Trs
 from utils import log
@@ -54,7 +55,7 @@ class SeadexClient:
             torrent_info = self.get_torrent_info(trs_id)
             if torrent_info:
                 # Extract required data with safe defaults
-                info_hash = torrent_info.get("infoHash", "")
+                info_hash: str = torrent_info.get("infoHash", "")
                 tracker = torrent_info.get("tracker", "")
                 url = torrent_info.get("url", "")
                 is_best = torrent_info.get("isBest", False)
@@ -64,6 +65,13 @@ class SeadexClient:
                 if not info_hash or not url:
                     log(f"Skipping TRS {trs_id} - missing essential data")
                     continue
+                
+                # Check if this is a private tracker torrent with redacted info hash
+                if info_hash == "<redacted>":
+                    private = True
+                    log(f"TRS {trs_id} is from private tracker - info hash redacted")
+                else:
+                    private = False
 
                 # Create Trs object
                 trs = Trs(
@@ -74,11 +82,14 @@ class SeadexClient:
                     is_best=is_best,
                     dual_audio=dual_audio,
                     chosen=False,
+                    private=private
                 )
 
                 torrents.append(trs)
+                private_msg = " (private)" if private else ""
                 log(
-                    f"Found torrent: {trs_id} ({'best' if is_best else 'normal'}, {'dual audio' if dual_audio else 'single audio'})"
+                    f"Found torrent: {trs_id} ({'best' if is_best else 'normal'}, "
+                    f"{'dual audio' if dual_audio else 'single audio'}){private_msg}"
                 )
             else:
                 log(f"Failed to get torrent info for TRS ID {trs_id}")
