@@ -32,6 +32,8 @@ SYNC_INTERVAL = _config["scheduling"]["sync_interval"]
 # Sonarr
 SONARR_URL = _config["sonarr"]["url"]
 SONARR_API_KEY = _config["sonarr"]["api_key"]
+SONARR_SERIES_TYPE = _config["sonarr"]["series_type"]
+SONARR_TAGS = _config["sonarr"].get("tags", [])
 
 # AniList
 ANILIST_API_URL = _config["anilist"]["api_url"]
@@ -44,6 +46,7 @@ TORRENT_URL = _config["seadex"]["torrent_url"]
 QB_URL = _config["qbittorrent"]["url"]
 QB_USER = _config["qbittorrent"]["username"]
 QB_PASS = _config["qbittorrent"]["password"]
+QB_CATEGORY = _config["qbittorrent"]["category"]
 
 # Webhook Server
 WEBHOOK_HOST = _config["webhook"]["host"]

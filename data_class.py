@@ -1,6 +1,6 @@
 """Data Class Representations"""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -30,13 +30,9 @@ class AniListSeries:
     anilist_id: int
     title: str
     season_year: int
-    torrents: list[Trs] = []
+    torrents: list[Trs] = field(default_factory=list)
     manually_added: bool = False
     ignore: bool = False
-
-    def __post_init__(self):
-        if self.torrents is None:
-            self.torrents = []
 
     def __repr__(self):
         return (
@@ -52,11 +48,7 @@ class Series:
     sonarr_id: int
     title: str
     num_seasons: int
-    anilist_entries: list[AniListSeries] = []
-
-    def __post_init__(self):
-        if self.anilist_entries is None:
-            self.anilist_entries = []
+    anilist_entries: list[AniListSeries] = field(default_factory=list)
 
     def __repr__(self):
         return f"Series(id={self.sonarr_id}, title='{self.title}', anilist_ids={self.anilist_entries})"

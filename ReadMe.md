@@ -25,12 +25,15 @@ pip install -r requirements.txt
    sonarr:
      url: "http://your-sonarr-host:8989"
      api_key: "your_actual_sonarr_api_key"
+     series_type: "anime"              # Filter by series type (optional)
+     tags: [1, 2]                      # Filter by tag IDs (optional)
 
    # qBittorrent configuration
    qbittorrent:
      url: "http://your-qbittorrent-host:8080"
      username: "your_username"
      password: "your_password"
+     category: "tv-sonarr"             # Category for downloads
 
    # Webhook Server configuration
    webhook:
@@ -43,13 +46,16 @@ pip install -r requirements.txt
 
 - **Data Settings**: Configure where cache files are stored
 - **Scheduling**: Set how often the sync runs (default: 24 hours)
-- **Sonarr**: Your Sonarr instance URL and API key
+- **Sonarr**:
+  - URL and API key for your Sonarr instance
+  - `series_type`: Filter series by type (e.g., "anime", "standard")
+  - `tags`: Filter series by tag IDs (use tag numbers, not names)
 - **AniList**: API endpoint for anime metadata
 - **Seadex**: Torrent collection URLs
-- **qBittorrent**: Your torrent client settings
+- **qBittorrent**:
+  - Connection settings for your torrent client
+  - `category`: Automatically assign downloads to a specific category
 - **Webhook**: Server settings for real-time updates
-
-**Note**: The `config.yaml` file contains sensitive information (API keys, passwords) and should not be committed to version control. A `.gitignore` entry ensures it stays local.
 
 ## Running the Application
 

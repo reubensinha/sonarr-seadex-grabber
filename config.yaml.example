@@ -12,8 +12,10 @@ scheduling:
 
 # Sonarr configuration
 sonarr:
-  url: "http://localhost:8989"  # Change to your Sonarr host
-  api_key: "your_sonarr_api_key"  # Replace with your actual Sonarr API key
+  url: "http://localhost:8989"      # Change to your Sonarr host
+  api_key: "your_sonarr_api_key"    # Replace with your actual Sonarr API key
+  series_type: "anime"              # Type of series to monitor
+  tags: []                          # Tags to filter series in Sonarr - ADD TAG NUMBER NOT NAME
 
 # AniList configuration
 anilist:
@@ -27,8 +29,9 @@ seadex:
 # qBittorrent configuration
 qbittorrent:
   url: "http://localhost:8080"  # Replace with your actual qBittorrent URL
-  username: "admin"  # Replace with your actual username
-  password: "adminadmin"  # Replace with your actual password
+  username: "admin"             # Replace with your actual username
+  password: "adminadmin"        # Replace with your actual password
+  category: "tv-sonarr"         # qBittorrent category for Sonarr downloads
 
 # Webhook Server configuration
 webhook:

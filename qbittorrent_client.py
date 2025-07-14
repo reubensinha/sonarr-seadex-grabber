@@ -2,7 +2,7 @@
 
 import requests
 from utils import log
-from config import QB_URL, QB_USER, QB_PASS
+from config import QB_URL, QB_USER, QB_PASS, QB_CATEGORY
 
 session = requests.Session()
 
@@ -25,9 +25,19 @@ def send_to_qbittorrent(info_hash):
     """Send a torrent to qBittorrent using its info hash."""
     qb_authenticate()
     magnet_link = f"magnet:?xt=urn:btih:{info_hash}"
+    
+    # Prepare data for torrent submission
+    data = {"urls": magnet_link}
+    
+    # Add category if configured
+    if QB_CATEGORY:
+        data["category"] = QB_CATEGORY
+        
     try:
-        resp = session.post(f"{QB_URL}/api/v2/torrents/add", data={"urls": magnet_link})
+        resp = session.post(f"{QB_URL}/api/v2/torrents/add", data=data)
         resp.raise_for_status()
-        log(f"Submitted magnet to qBittorrent: {magnet_link}")
+        
+        category_msg = f" to category '{QB_CATEGORY}'" if QB_CATEGORY else ""
+        log(f"Submitted magnet to qBittorrent{category_msg}: {magnet_link}")
     except requests.RequestException as e:
         log(f"Failed to submit torrent: {e}")
