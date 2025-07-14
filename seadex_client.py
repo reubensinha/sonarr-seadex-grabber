@@ -1,6 +1,5 @@
 """Client for interacting with Seadex API."""
 
-from math import inf
 import requests
 from data_class import Trs
 from utils import log

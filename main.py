@@ -1,6 +1,5 @@
 """Main script for Seaex Sonarr Monitor."""
 
-from math import inf
 import time
 import threading
 from data_class import Series, AniListSeries, Trs
@@ -16,7 +15,7 @@ from config import (
     SCORING_IS_BEST_WEIGHT,
     SCORING_DUAL_AUDIO_WEIGHT,
     SCORING_TRACKER_WEIGHTS,
-    STARTUP_SCAN
+    STARTUP_SCAN,
 )
 from webhook_server import WebhookServer
 

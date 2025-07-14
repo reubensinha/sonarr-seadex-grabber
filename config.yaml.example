@@ -1,6 +1,10 @@
 # Configuration for Sonarr and external metadata services
 # Copy this file to config.yaml and update the values according to your setup
 
+# General settings
+general:
+  startup_scan: true  # Whether to perform a scan on startup
+
 # Data directory for persistent cache
 data:
   dir: "data"
