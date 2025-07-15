@@ -1,9 +1,9 @@
-# Configuration for Sonarr and external metadata services
-# Copy this file to config.yaml and update the values according to your setup
+echo "YOUR_ACTUAL_TOKEN" | docker login ghcr.io -u reubensinha --password-stdin# Configuration for Sonarr and external metadata services
+# NOTE: For Docker deployment, sensitive values should be set via environment variables
 
 # General settings
 general:
-  startup_scan: true  # Whether to perform a scan on startup
+  startup_scan: false # Whether to perform a scan on startup
 
 # Data directory for persistent cache
 data:
@@ -12,14 +12,15 @@ data:
 
 # Scheduling (in seconds)
 scheduling:
-  sync_interval: 86400  # 24 hours in seconds
+  sync_interval: 86400 # 24 hours in seconds
 
 # Sonarr configuration
+# Use environment variables: SONARR_URL, SONARR_API_KEY
 sonarr:
-  url: "http://localhost:8989"      # Change to your Sonarr host
-  api_key: "your_sonarr_api_key"    # Replace with your actual Sonarr API key
-  series_type: "anime"              # Type of series to monitor
-  tags: []                          # Tags to filter series in Sonarr - ADD TAG NUMBER NOT NAME
+  url: "" # Set via SONARR_URL environment variable
+  api_key: "" # Set via SONARR_API_KEY environment variable
+  series_type: "" # Type of series to monitor
+  tags: [] # Tags to filter series in Sonarr
 
 # AniList configuration
 anilist:
@@ -32,23 +33,25 @@ seadex:
 
 # Torrent scoring configuration
 scoring:
-  is_best_weight: 2        # Points for torrents marked as "best"
-  dual_audio_weight: 1     # Points for dual audio torrents
-  tracker_weights:         # Points per tracker (can be negative for penalties)
-    "Nyaa": 10             # Prefer Nyaa
-    "AB": -10              # penalty for AB
-    "default": 0           # Default penalty for unknown trackers
-  include_private: true    # Whether to include private tracker torrents in scoring
+  is_best_weight: 2 # Points for torrents marked as "best"
+  dual_audio_weight: 1 # Points for dual audio torrents
+  tracker_weights: # Points per tracker (can be negative for penalties)
+    "Nyaa": 0 # Nyaa is the baseline (0 points)
+    "AB": -10
+    "default": 0 # Default penalty for unknown trackers
+  include_private: true # Whether to include private tracker torrents in scoring
 
 # qBittorrent configuration
+# Use environment variables: QB_URL, QB_USER, QB_PASS
 qbittorrent:
-  url: "http://localhost:8080"  # Replace with your actual qBittorrent URL
-  username: "admin"             # Replace with your actual username
-  password: "adminadmin"        # Replace with your actual password
-  category: "tv-sonarr"         # qBittorrent category for Sonarr downloads
+  url: "" # Set via QB_URL environment variable
+  username: "" # Set via QB_USER environment variable
+  password: "" # Set via QB_PASS environment variable
+  category: "anime-sonarr" # qBittorrent category for Sonarr downloads
 
 # Webhook Server configuration
+# Use environment variables: WEBHOOK_HOST, WEBHOOK_PORT
 webhook:
-  host: "localhost"
-  port: 8765
-  enabled: true  # Set to false to disable webhook and use only scheduled updates
+  host: "localhost" # Set via WEBHOOK_HOST environment variable
+  port: 8765 # Set via WEBHOOK_PORT environment variable
+  enabled: false # Set to false to disable webhook and use only scheduled updates

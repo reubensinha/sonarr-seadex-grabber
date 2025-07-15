@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  sonarr-seadex-grabber:
+    image: ghcr.io/reubensinha/sonarr-seadex-grabber:latest
+    container_name: sonarr-seadex-grabber
+    restart: unless-stopped
+    
+    # Environment variables for configuration
+    environment:
+      # Sonarr configuration
+      - SONARR_URL=http://sonarr:8989
+      - SONARR_API_KEY=your-sonarr-api-key-here
+      - SONARR_SERIES_TYPE=
+      - SONARR_TAGS=  # Comma-separated list of tags
+      
+      # qBittorrent configuration
+      - QB_URL=http://qbittorrent:8080
+      - QB_USER=your-qbittorrent-username
+      - QB_PASS=your-qbittorrent-password
+      - QB_CATEGORY=anime-sonarr
+      
+      # Webhook server configuration
+      - WEBHOOK_HOST=0.0.0.0
+      - WEBHOOK_PORT=8765
+      - USE_WEBHOOK=false  # Set to true to enable webhook server
+      
+      # Optional: Additional configuration
+      # - STARTUP_SCAN=false
+      - SYNC_INTERVAL=86400
+    
+    # Port mapping for webhook server
+    ports:
+      - "8765:8765"
+    
+    # Persistent data volume
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml:ro  # Optional: mount custom config
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Network configuration
+    networks:
+      - sonarr-network
+
+# Optional: Create a custom network for better service communication
+networks:
+  sonarr-network:
+    driver: bridge
+
+# Optional: Named volumes for persistent data
+volumes:
+  sonarr-seadex-data:
+    driver: local
