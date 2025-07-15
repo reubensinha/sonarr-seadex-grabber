@@ -212,3 +212,5 @@ __marimo__/
 Readme.txt
 data
 *.pyc
+.dockerignore
+Dockerfile
