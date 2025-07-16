@@ -28,7 +28,15 @@ from seadex_client import SeadexClient
 def sync_sonarr_series(
     known_series: list[Series], sonarr_series: list[Series]
 ) -> list[Series]:
-    """Sync Known series with Sonarr series, adding or removing as necessary."""
+    """Sync Known series with Sonarr series, adding or removing as necessary.
+
+    Args:
+        known_series: List of currently known series
+        sonarr_series: List of series from Sonarr (should not be None)
+
+    Returns:
+        Updated list of series
+    """
     # Create dictionaries for easier lookup by sonarr_id
     known_series_dict = {series.sonarr_id: series for series in known_series}
     sonarr_series_dict = {series.sonarr_id: series for series in sonarr_series}
@@ -208,16 +216,24 @@ def choose_best_and_merge_torrents(
     return best_torrent, merged_torrents
 
 
-def update_all_series():
+def update_all_series(skip_qbittorrent=False):
     """Main Running Loop for the script."""
     sonarr = SonarrClient()
     anilist = AniListClient()
     seadex = SeadexClient()
 
     # 1. Update Sonarr monitered series list.
-    sonarr_series: list[Series] = sonarr.get_monitored_series()
+    sonarr_series: list[Series] | None = sonarr.get_monitored_series()
     known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
-    series: list[Series] = sync_sonarr_series(known_series, sonarr_series)
+
+    # If we couldn't fetch series from Sonarr, don't modify the known series
+    if sonarr_series is None:
+        log(
+            "Skipping series sync due to Sonarr connection error - keeping existing series"
+        )
+        series = known_series
+    else:
+        series: list[Series] = sync_sonarr_series(known_series, sonarr_series)
 
     # 2. Update AniList IDs for all series.
     for series_item in series:
@@ -244,7 +260,10 @@ def update_all_series():
                 log(
                     f"Best release for AniList ID {anilist_entry.anilist_id}: {best.id}"
                 )
-                send_to_qbittorrent(best.info_hash, best.private, best.url)
+                if not skip_qbittorrent:
+                    send_to_qbittorrent(best.info_hash, best.private, best.url)
+                else:
+                    log("Skipping qBittorrent download for initial cache population")
 
     save_json(KNOWN_SERIES_FILE, series)
 
@@ -270,10 +289,21 @@ def webhook_event_handler(event_type: str, webhook_data: dict):
 def scheduled_update():
     """Continuously run update_all_series on schedule."""
 
+    if STARTUP_SCAN:
+        first_scan = True
+        log("Performing initial data population (fetching series and torrent info)...")
+        log("This will populate the cache but not send any torrents to qBittorrent")
+    else:
+        first_scan = False
+
     while True:
         try:
             log("Starting scheduled update...")
-            update_all_series()
+            update_all_series(first_scan)
+
+            if first_scan:
+                log("Initial scan completed, will now run scheduled updates")
+                first_scan = False
 
             log(
                 f"Scheduled update completed. Next update in {SYNC_INTERVAL} seconds..."
@@ -314,9 +344,6 @@ def main():
 
         # Run initial update
         log("Running initial update...")
-
-        if STARTUP_SCAN:
-            update_all_series()
 
         # Start scheduled updates in a separate thread
         log("Starting scheduled updates thread...")

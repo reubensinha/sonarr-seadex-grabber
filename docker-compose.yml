@@ -26,7 +26,7 @@ services:
       - USE_WEBHOOK=false  # Set to true to enable webhook server
       
       # Optional: Additional configuration
-      # - STARTUP_SCAN=false
+      - STARTUP_SCAN=false
       - SYNC_INTERVAL=86400
     
     # Port mapping for webhook server
@@ -36,11 +36,10 @@ services:
     # Persistent data volume
     volumes:
       - ./data:/app/data
-      - ./config.yaml:/app/config.yaml:ro  # Optional: mount custom config
     
     # Health check
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8765/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3

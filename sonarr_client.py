@@ -5,22 +5,27 @@ from config import SONARR_API_KEY, SONARR_URL, SONARR_SERIES_TYPE, SONARR_TAGS
 from data_class import Series
 from utils import log
 
-HEADERS = {"X-Api-Key": SONARR_API_KEY}
+def get_headers():
+    """Get headers for Sonarr API requests."""
+    api_key = SONARR_API_KEY
+    if api_key and isinstance(api_key, str):
+        return {"X-Api-Key": api_key}
+    return {"X-Api-Key": ""}
 
 
 class SonarrClient:
     """Client for interacting with Sonarr API."""
 
-    def get_monitored_series(self) -> list[Series]:
-        """Get the list of monitored series from Sonarr."""
+    def get_monitored_series(self) -> list[Series] | None:
+        """Get the list of monitored series from Sonarr. Returns None if there's an error."""
         url = f"{SONARR_URL}/api/v3/series"
         try:
-            response = requests.get(url, headers=HEADERS, timeout=10)
+            response = requests.get(url, headers=get_headers(), timeout=10)
             response.raise_for_status()
             response_list = response.json()
         except requests.RequestException as e:
             log(f"Error fetching series from Sonarr: {e}")
-            return []
+            return None
 
         if not response_list:
             log("No series found in Sonarr.")
@@ -46,6 +51,7 @@ class SonarrClient:
             # Filter by series type if configured
             if (
                 SONARR_SERIES_TYPE
+                and isinstance(SONARR_SERIES_TYPE, str)
                 and series.get("seriesType", "").lower() != SONARR_SERIES_TYPE.lower()
             ):
                 filtered_count += 1
