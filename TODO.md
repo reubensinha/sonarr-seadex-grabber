@@ -11,6 +11,7 @@
 - [x] I want to be able to see what the last downloaded torrent is on Sonarr for a given series. (Lazy-loaded per series via Sonarr's history API.)
 - [x] Display the dates for when eachthe Seadex release was published.
 - [x] Have links to Seadex, Sonarr, AniList, and the Torrent, at the relevant locations.
+- [x] qBittorrent login fails with "authentication failed" even with correct credentials. (Root cause: qBittorrent 4.1+ rejects `/api/v2/auth/login` as a CSRF measure unless the `Referer`/`Origin` headers match its own host - `qb_authenticate()` sent neither. Fixed in `clients/qbittorrent_client.py`. Note for anyone hitting this: if the container's IP already got auto-banned by qBittorrent's own "ban after consecutive failures" setting from repeated failed attempts, the code fix alone won't help until that ban expires or is cleared in qBittorrent's Web UI options.)
 
 ## New Features
 
@@ -36,3 +37,6 @@
 ## Long Term
 
 - [ ] Generally make Frontend UI better. (Likely involves moving to React/Seperate Frontend Framework, perhaps something in line with my other projects <https://github.com/reubensinha/ln-manager>)
+- [ ] Allow for URLs and conifgs for Sonarr and qBittorrent to be set in the UI and instruct users to set it up if blank. (Allow for env var lock similar to sync interval.)
+- [ ] Add Radarr Support.
+- [ ] When sync interval set to 0, disable automatic sync, make it manual sync only.
