@@ -6,7 +6,7 @@ Uses the Kometa Anime-IDs and Anime-Lists repositories for accurate mappings.
 import json
 import os
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List
 from xml.etree import ElementTree as ET
 
 import requests

@@ -1,87 +1,62 @@
 # Seadex-Sonarr Connector
 
+[![CI](https://github.com/reubensinha/sonarr-seadex-grabber/actions/workflows/ci.yml/badge.svg)](https://github.com/reubensinha/sonarr-seadex-grabber/actions/workflows/ci.yml)
+[![GHCR](https://img.shields.io/badge/ghcr.io-sonarr--seadex--grabber-blue?logo=docker)](https://github.com/reubensinha/sonarr-seadex-grabber/pkgs/container/sonarr-seadex-grabber)
+
 A Python application that monitors your Sonarr library and automatically fetches high-quality releases from Seadex.
 
-## Setup
+## Quick Start (Docker)
 
-### 1. Install Dependencies
+This app is intended to run as a Docker container against your existing
+Sonarr and qBittorrent instances - a published image is built and tagged
+automatically on every release (see
+[DOCKER.md](DOCKER.md#publishing-a-new-image)), so you don't need to clone
+this repo. Save the following as `docker-compose.yml`, fill in the five
+`your-*` placeholders below (leave `WEBHOOK_HOST` as-is), and run
+`docker-compose up -d` next to it:
 
-```bash
-pip install -r requirements.txt
+```yaml
+services:
+  sonarr-seadex-grabber:
+    image: ghcr.io/reubensinha/sonarr-seadex-grabber:latest
+    container_name: sonarr-seadex-grabber
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+    environment:
+      # Required - your existing Sonarr/qBittorrent instances
+      - SONARR_URL=http://your-sonarr-host:8989
+      - SONARR_API_KEY=your-sonarr-api-key
+      - QB_URL=http://your-qbittorrent-host:8080
+      - QB_USER=your-qbittorrent-username
+      - QB_PASS=your-qbittorrent-password
+
+      # Required - binds the dashboard/webhook server to all interfaces so
+      # it's reachable through the port mapping above. Leaving this unset
+      # defaults to localhost-only, which is unreachable from outside the
+      # container.
+      - WEBHOOK_HOST=0.0.0.0
+
+      # Optional
+      - QB_CATEGORY=anime-sonarr    # qBittorrent category for downloads
+      - SYNC_INTERVAL=86400         # seconds between scheduled syncs (24h) - also adjustable later from the Settings page
+      - STARTUP_SCAN=false          # true: populate the cache on first launch without downloading anything
+      - USE_WEBHOOK=false           # true once you've set up the Sonarr webhook below
 ```
 
-### 2. Configuration
+Once it's running, open `http://<host>:8765` for the dashboard (see
+[WebUI](#webui) below) - no `config.yaml` edit is required, everything above
+is set via environment variables. `./data` is where `known_series.json` and
+other cache files persist across container restarts, so keep that volume
+mount.
 
-1. Copy the example configuration file:
-
-   ```bash
-   cp config.yaml.example config.yaml
-   ```
-
-2. Edit `config.yaml` with your specific settings:
-
-   ```yaml
-   # Sonarr configuration
-   sonarr:
-     url: "http://your-sonarr-host:8989"
-     api_key: "your_actual_sonarr_api_key"
-     series_type: "anime"              # Filter by series type (optional)
-     tags: [1, 2]                      # Filter by tag IDs (optional)
-
-   # Torrent scoring configuration
-   scoring:
-     is_best_weight: 2                 # Points for "best" torrents
-     dual_audio_weight: 1              # Points for dual audio
-     tracker_weights:
-       "Nyaa": 0                       # Baseline tracker
-       "AnimeTosho": -2                # Small penalty
-       "default": -10                  # Default penalty
-
-   # qBittorrent configuration
-   qbittorrent:
-     url: "http://your-qbittorrent-host:8080"
-     username: "your_username"
-     password: "your_password"
-     category: "tv-sonarr"             # Category for downloads
-
-   # Webhook Server configuration
-   webhook:
-     host: "localhost"
-     port: 8765
-     enabled: true
-   ```
-
-### 3. Configuration Options
-
-- **Data Settings**: Configure where cache files are stored
-- **Scheduling**: Set how often the sync runs (default: 24 hours)
-- **Sonarr**:
-  - URL and API key for your Sonarr instance
-  - `series_type`: Filter series by type (e.g., "anime", "standard")
-  - `tags`: Filter series by tag IDs (use tag numbers, not names)
-- **AniList**: API endpoint for anime metadata
-- **Seadex**: Torrent collection URLs
-- **Scoring**: Configure how torrents are ranked for selection
-  - `is_best_weight`: Points awarded for "best" torrents (default: 2)
-  - `dual_audio_weight`: Points awarded for dual audio (default: 1)
-  - `tracker_weights`: Points per tracker, can be positive or negative
-    - Use "default" key for unknown trackers
-    - Example: `{"Nyaa": 0, "AnimeTosho": -2, "default": -10}`
-- **qBittorrent**:
-  - Connection settings for your torrent client
-  - `category`: Automatically assign downloads to a specific category
-- **Webhook**: Server settings for real-time updates
-
-## Running the Application
-
-```bash
-python main.py
-```
-
-This starts the sync loop plus a web server on `webhook.host:webhook.port`
-(default `http://localhost:8765`) that serves both the dashboard and the
-Sonarr webhook endpoint - it's always running, regardless of whether
-`webhook.enabled` is turned on.
+Got the repo checked out instead? `cp .env.docker .env` (fill it in), then
+`docker-compose up -d` uses the `docker-compose.yml` already in this repo -
+same result. See [DOCKER.md](DOCKER.md) for the full environment variable
+reference and the full-stack compose file that also bundles Sonarr and
+qBittorrent for you.
 
 ## WebUI
 
@@ -121,6 +96,39 @@ to **Settings → Connect → Add → Webhook** and configure:
 - **URL:** `http://<host>:8765/webhook`
 - **Method:** `POST`
 - **Triggers:** On Series Add, On Series Delete, On Series Edit
+
+## Running without Docker
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env       # or cp config.yaml.example config.yaml - see below
+# edit .env (or config.yaml) with your Sonarr/qBittorrent details
+python main.py
+```
+
+Every setting can be set via an environment variable (`.env`, loaded via
+python-dotenv) - `config.yaml` is entirely optional, see the comments in
+[config.yaml.example](config.yaml.example) for the full list and their
+environment variable equivalents. The one exception is
+`scoring.tracker_weights` (per-tracker score adjustments), which is
+config.yaml-only but already has a sensible built-in default.
+
+This starts the sync loop plus a web server on `webhook.host:webhook.port`
+(default `http://localhost:8765`) that serves both the dashboard and the
+Sonarr webhook endpoint - it's always running, regardless of whether
+`webhook.enabled` is turned on.
+
+## Development
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+ruff check .
+pytest
+```
+
+Both run in CI (`.github/workflows/ci.yml`) on every pull request targeting
+`main`. See [DOCKER.md](DOCKER.md#publishing-a-new-image) for how merging to
+`main` turns into a tagged, published Docker image.
 
 ## Planned
 

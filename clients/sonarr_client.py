@@ -1,9 +1,11 @@
 """Client for interacting with Sonarr API to manage series."""
 
 import requests
-from core.config import SONARR_API_KEY, SONARR_URL, SONARR_SERIES_TYPE, SONARR_TAGS
+
+from core.config import SONARR_API_KEY, SONARR_SERIES_TYPE, SONARR_TAGS, SONARR_URL
 from core.data_class import Series
 from core.utils import log
+
 
 def get_headers():
     """Get headers for Sonarr API requests."""

@@ -1,7 +1,7 @@
 """Data Class Representations"""
 
-from dataclasses import dataclass, field, asdict
-from typing import Dict, Any
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict
 
 
 @dataclass
@@ -112,7 +112,10 @@ class Series:
     blacklisted_anilist_ids: list[int] = field(default_factory=list)
 
     def __repr__(self):
-        return f"Series(id={self.sonarr_id}, title='{self.title}', tvdb_id={self.tvdb_id}, anilist_ids={self.anilist_entries})"
+        return (
+            f"Series(id={self.sonarr_id}, title='{self.title}', "
+            f"tvdb_id={self.tvdb_id}, anilist_ids={self.anilist_entries})"
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""

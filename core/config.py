@@ -2,10 +2,19 @@
 
 import os
 from pathlib import Path
-import yaml
 
-# config.yaml lives at the project root, one level up from this package
+import yaml
+from dotenv import load_dotenv
+
+# config.yaml (and, for bare-metal runs, .env) live at the project root, one
+# level up from this package
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# No-op if .env doesn't exist (e.g. in Docker, where env vars are injected
+# directly by the container runtime). Never overrides a real environment
+# variable that's already set (override=False, python-dotenv's default) -
+# so a Docker deployment's injected env vars always win over any stray .env.
+load_dotenv(_PROJECT_ROOT / ".env")
 
 
 def load_config():
@@ -74,7 +83,9 @@ SETTINGS_FILE = get_env_or_config(
 # seed the user can freely adjust from the UI when no env var is present.
 SYNC_INTERVAL_LOCKED = os.getenv("SYNC_INTERVAL") is not None
 
-sync_interval_value = get_env_or_config("SYNC_INTERVAL", get_nested_config(_config, ["scheduling", "sync_interval"]), "86400")
+sync_interval_value = get_env_or_config(
+    "SYNC_INTERVAL", get_nested_config(_config, ["scheduling", "sync_interval"]), "86400"
+)
 try:
     if isinstance(sync_interval_value, (int, str)):
         SYNC_INTERVAL = int(sync_interval_value)
@@ -124,7 +135,9 @@ TORRENT_URL = get_env_or_config(
 )
 
 # Scoring
-scoring_is_best_weight = get_env_or_config("SCORING_IS_BEST_WEIGHT", get_nested_config(_config, ["scoring", "is_best_weight"]), "2")
+scoring_is_best_weight = get_env_or_config(
+    "SCORING_IS_BEST_WEIGHT", get_nested_config(_config, ["scoring", "is_best_weight"]), "2"
+)
 try:
     if isinstance(scoring_is_best_weight, (int, str)):
         SCORING_IS_BEST_WEIGHT = int(scoring_is_best_weight)
@@ -133,7 +146,9 @@ try:
 except (ValueError, TypeError):
     SCORING_IS_BEST_WEIGHT = 2
 
-scoring_dual_audio_weight = get_env_or_config("SCORING_DUAL_AUDIO_WEIGHT", get_nested_config(_config, ["scoring", "dual_audio_weight"]), "1")
+scoring_dual_audio_weight = get_env_or_config(
+    "SCORING_DUAL_AUDIO_WEIGHT", get_nested_config(_config, ["scoring", "dual_audio_weight"]), "1"
+)
 try:
     if isinstance(scoring_dual_audio_weight, (int, str)):
         SCORING_DUAL_AUDIO_WEIGHT = int(scoring_dual_audio_weight)

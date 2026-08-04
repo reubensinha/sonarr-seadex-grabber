@@ -23,7 +23,7 @@ COPY main.py .
 COPY core ./core
 COPY clients ./clients
 COPY webapp ./webapp
-COPY config.yaml.template config.yaml
+COPY config.yaml.example config.yaml
 
 # Create data directory
 RUN mkdir -p data

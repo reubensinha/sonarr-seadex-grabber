@@ -6,30 +6,32 @@ services:
     container_name: sonarr-seadex-grabber
     restart: unless-stopped
     
-    # Environment variables for configuration
+    # Environment variables for configuration - values are substituted from
+    # a .env file (copy .env.docker to .env and fill it in) via Docker
+    # Compose's ${VAR} interpolation.
     environment:
       # Sonarr configuration
-      - SONARR_URL=http://sonarr:8989
-      - SONARR_API_KEY=your-sonarr-api-key-here
-      - SONARR_SERIES_TYPE=
-      - SONARR_TAGS=  # Comma-separated list of tags
-      
+      - SONARR_URL=${SONARR_URL:-http://sonarr:8989}
+      - SONARR_API_KEY=${SONARR_API_KEY}
+      - SONARR_SERIES_TYPE=${SONARR_SERIES_TYPE:-}
+      - SONARR_TAGS=${SONARR_TAGS:-}  # Comma-separated list of tags
+
       # qBittorrent configuration
-      - QB_URL=http://qbittorrent:8080
-      - QB_USER=your-qbittorrent-username
-      - QB_PASS=your-qbittorrent-password
-      - QB_CATEGORY=anime-sonarr
-      
+      - QB_URL=${QB_URL:-http://qbittorrent:8080}
+      - QB_USER=${QB_USER}
+      - QB_PASS=${QB_PASS}
+      - QB_CATEGORY=${QB_CATEGORY:-anime-sonarr}
+
       # Web UI / webhook server configuration - the dashboard is always
       # reachable on this port; USE_WEBHOOK only controls whether incoming
       # Sonarr webhook events trigger a sync
       - WEBHOOK_HOST=0.0.0.0
       - WEBHOOK_PORT=8765
-      - USE_WEBHOOK=false  # Set to true to act on Sonarr webhook events
-      
+      - USE_WEBHOOK=${USE_WEBHOOK:-false}  # Set to true to act on Sonarr webhook events
+
       # Optional: Additional configuration
-      - STARTUP_SCAN=false
-      - SYNC_INTERVAL=86400
+      - STARTUP_SCAN=${STARTUP_SCAN:-false}
+      - SYNC_INTERVAL=${SYNC_INTERVAL:-86400}
     
     # Port mapping for the dashboard/webhook server
     ports:
