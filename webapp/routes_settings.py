@@ -16,8 +16,6 @@ from webapp.app import templates
 
 router = APIRouter()
 
-_MIN_SYNC_INTERVAL_SECONDS = 300  # 5 minutes - guards against an accidental near-zero value
-
 
 @router.get("/settings")
 def settings_page(request: Request):
@@ -45,7 +43,7 @@ def update_sync_interval(hours: float = Form(...)):
         log("Ignoring sync interval change request - locked via the SYNC_INTERVAL environment variable")
         return RedirectResponse("/settings", status_code=303)
 
-    seconds = max(int(hours * 3600), _MIN_SYNC_INTERVAL_SECONDS)
+    seconds = sync_manager.clamp_sync_interval_hours(hours)
     sync_manager.set_sync_interval(seconds)
     return RedirectResponse("/settings", status_code=303)
 

@@ -16,7 +16,10 @@
   </form>
   <label class="muted"><input type="checkbox" id="filter-show-ignored" checked> Show ignored entries</label>
   <label class="muted"><input type="checkbox" id="filter-needs-pick"> Only entries needing a pick</label>
-  <span class="muted">Sync interval: every {{ (sync_interval // 3600) }}h. Actions are ignored while a sync is running.</span>
+  <span class="muted">
+    {% if sync_interval <= 0 %}Automatic sync disabled - manual sync only.{% elif sync_interval < 3600 %}Sync interval: every {{ (sync_interval // 60) }}m.{% else %}Sync interval: every {{ (sync_interval // 3600) }}h.{% endif %}
+    Actions are ignored while a sync is running.
+  </span>
 </section>
 
 <section class="logs">
@@ -43,6 +46,17 @@
       <form method="post" action="/series/{{ series.sonarr_id }}/research">
         <button type="submit">Re-search Seadex</button>
       </form>
+      {% set all_paused = series.anilist_entries and series.anilist_entries | rejectattr('ignore') | list | length == 0 %}
+      {% if all_paused %}
+      <span class="pill pill-error">paused</span>
+      <form method="post" action="/series/{{ series.sonarr_id }}/resume">
+        <button type="submit">Resume show</button>
+      </form>
+      {% elif series.anilist_entries %}
+      <form method="post" action="/series/{{ series.sonarr_id }}/pause">
+        <button type="submit" title="Stops auto-downloading new/alternate releases for every currently-known season. Future seasons are still picked up automatically. Doesn't touch Sonarr's monitoring.">Pause show</button>
+      </form>
+      {% endif %}
     </div>
 
     {% if not series.anilist_entries %}

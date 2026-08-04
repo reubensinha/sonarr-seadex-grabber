@@ -59,9 +59,13 @@ def get_nested_config(config, keys, default=None):
 _config = load_config()
 
 # General settings
-STARTUP_SCAN = get_env_or_config(
+# str(...) + lower()-check, not a bare truthy check - an env var is always a
+# string, so STARTUP_SCAN=false would otherwise be truthy (a non-empty
+# string) and never actually disable the startup scan.
+startup_scan_value = get_env_or_config(
     "STARTUP_SCAN", get_nested_config(_config, ["general", "startup_scan"]), True
 )
+STARTUP_SCAN = str(startup_scan_value).lower() in ("true", "1", "yes", "on")
 
 # Data directory for persistent cache
 DATA_DIR = get_env_or_config("DATA_DIR", get_nested_config(_config, ["data", "dir"]), "data")

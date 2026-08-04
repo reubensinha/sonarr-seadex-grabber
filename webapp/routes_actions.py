@@ -24,6 +24,8 @@ from main import (
     group_siblings,
     mark_torrents_downloaded,
     merge_anilist_ids,
+    pause_series,
+    resume_series,
     set_preferred_torrents,
 )
 from webapp.app import templates
@@ -61,6 +63,38 @@ def trigger_series_sync(sonarr_id: int):
 def trigger_series_research(sonarr_id: int):
     if not sync_manager.run_research_series(sonarr_id, trigger_source="manual"):
         log(f"Manual re-search for series {sonarr_id} ignored - a sync is already in progress")
+    return RedirectResponse("/", status_code=303)
+
+
+@router.post("/series/{sonarr_id}/pause")
+def pause_series_route(sonarr_id: int):
+    if sync_manager.is_busy():
+        log(f"Pause request for series {sonarr_id} rejected - sync in progress")
+        return RedirectResponse("/", status_code=303)
+
+    with sync_manager.DATA_LOCK:
+        known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
+        series = _find_series(known_series, sonarr_id)
+        if series is not None:
+            pause_series(series)
+            save_json(KNOWN_SERIES_FILE, known_series)
+
+    return RedirectResponse("/", status_code=303)
+
+
+@router.post("/series/{sonarr_id}/resume")
+def resume_series_route(sonarr_id: int):
+    if sync_manager.is_busy():
+        log(f"Resume request for series {sonarr_id} rejected - sync in progress")
+        return RedirectResponse("/", status_code=303)
+
+    with sync_manager.DATA_LOCK:
+        known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
+        series = _find_series(known_series, sonarr_id)
+        if series is not None:
+            resume_series(series)
+            save_json(KNOWN_SERIES_FILE, known_series)
+
     return RedirectResponse("/", status_code=303)
 
 

@@ -24,6 +24,19 @@ SYNC_LOCK = threading.Lock()
 # WebUI's data-correction routes (ignore toggle, torrent override, etc).
 DATA_LOCK = threading.Lock()
 
+# Guards against an accidental near-zero value hammering Seadex/AniList/
+# Sonarr - only applies to a positive value, a deliberate 0 bypasses it.
+_MIN_SYNC_INTERVAL_SECONDS = 300  # 5 minutes
+
+
+def clamp_sync_interval_hours(hours: float) -> int:
+    """Convert a Settings-page hours value to seconds. 0 (or negative) means
+    "disabled" and passes through unclamped; any positive value is floored
+    to _MIN_SYNC_INTERVAL_SECONDS."""
+    if hours <= 0:
+        return 0
+    return max(int(hours * 3600), _MIN_SYNC_INTERVAL_SECONDS)
+
 
 def get_sync_interval() -> int:
     """Return the current sync interval in seconds.
