@@ -14,6 +14,10 @@ def qb_authenticate() -> bool:
         resp = session.post(
             f"{QB_URL}/api/v2/auth/login",
             data={"username": QB_USER, "password": QB_PASS},
+            # qBittorrent 4.1+ rejects the login POST as a CSRF protection
+            # measure unless Referer/Origin match its own host - independent
+            # of whether the credentials themselves are correct.
+            headers={"Referer": str(QB_URL), "Origin": str(QB_URL)},
         )
         if resp.text.strip() != "Ok.":
             log("qBittorrent auth error: login failed (unexpected response)")
