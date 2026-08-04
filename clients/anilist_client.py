@@ -6,7 +6,8 @@ import requests
 
 from core.config import ANILIST_API_URL
 from core.data_class import AniListSeries
-from core.utils import log, RateLimiter
+from core.utils import RateLimiter, log
+
 from .id_mapper import id_mapper
 
 

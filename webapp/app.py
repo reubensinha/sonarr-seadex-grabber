@@ -51,11 +51,11 @@ app.mount(
 
 # Imported after `app`/`templates` exist, since these route modules import
 # them back (`from webapp.app import templates`).
-from main import score_torrent, get_scoring_breakdown  # noqa: E402
-from webapp.routes_dashboard import router as dashboard_router  # noqa: E402
+from main import get_scoring_breakdown, score_torrent  # noqa: E402
 from webapp.routes_actions import router as actions_router  # noqa: E402
-from webapp.routes_webhook import router as webhook_router  # noqa: E402
+from webapp.routes_dashboard import router as dashboard_router  # noqa: E402
 from webapp.routes_settings import router as settings_router  # noqa: E402
+from webapp.routes_webhook import router as webhook_router  # noqa: E402
 
 
 def _group_by_release(torrents):

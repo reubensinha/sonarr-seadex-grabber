@@ -1,8 +1,9 @@
 """Client for interacting with qBittorrent API."""
 
 import requests
+
+from core.config import QB_CATEGORY, QB_PASS, QB_URL, QB_USER
 from core.utils import log
-from core.config import QB_URL, QB_USER, QB_PASS, QB_CATEGORY
 
 session = requests.Session()
 

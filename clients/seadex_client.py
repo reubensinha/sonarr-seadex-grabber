@@ -1,9 +1,10 @@
 """Client for interacting with Seadex API."""
 
 import requests
+
+from core.config import COLLECTIONS_URL, TORRENT_URL
 from core.data_class import Trs
 from core.utils import log
-from core.config import COLLECTIONS_URL, TORRENT_URL
 
 
 class SeadexClient:

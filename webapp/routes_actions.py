@@ -12,12 +12,13 @@ attempting fine-grained merge logic against an in-flight sync.
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 
-from core import sync_manager
 from clients.anilist_client import AniListClient
 from clients.sonarr_client import SonarrClient
+from core import sync_manager
 from core.cache import load_json, save_json
 from core.config import KNOWN_SERIES_FILE
 from core.data_class import AniListSeries, Series
+from core.utils import log
 from main import (
     apply_chosen_torrents,
     group_siblings,
@@ -25,7 +26,6 @@ from main import (
     merge_anilist_ids,
     set_preferred_torrents,
 )
-from core.utils import log
 from webapp.app import templates
 
 router = APIRouter()

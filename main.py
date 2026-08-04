@@ -1,27 +1,26 @@
 """Main script for Seaex Sonarr Monitor."""
 
-import time
 import threading
-from core.data_class import Series, AniListSeries, Trs
+import time
 
+from clients.anilist_client import AniListClient
+from clients.qbittorrent_client import send_to_qbittorrent
+from clients.seadex_client import SeadexClient
+from clients.sonarr_client import SonarrClient
+from core import sync_manager
 from core.cache import load_json, save_json
-from core.utils import log
 from core.config import (
     KNOWN_SERIES_FILE,
-    WEBHOOK_HOST,
-    WEBHOOK_PORT,
-    USE_WEBHOOK,
-    SCORING_IS_BEST_WEIGHT,
     SCORING_DUAL_AUDIO_WEIGHT,
+    SCORING_IS_BEST_WEIGHT,
     SCORING_TRACKER_WEIGHTS,
     STARTUP_SCAN,
+    USE_WEBHOOK,
+    WEBHOOK_HOST,
+    WEBHOOK_PORT,
 )
-from core import sync_manager
-
-from clients.qbittorrent_client import send_to_qbittorrent
-from clients.sonarr_client import SonarrClient
-from clients.anilist_client import AniListClient
-from clients.seadex_client import SeadexClient
+from core.data_class import AniListSeries, Series, Trs
+from core.utils import log
 
 
 def migrate_series_data(series_list: list[Series]) -> list[Series]:
@@ -35,7 +34,10 @@ def migrate_series_data(series_list: list[Series]) -> list[Series]:
         # Check if TVDB ID is missing (backward compatibility)
         if series.tvdb_id is None:
             # We can't populate TVDB ID without Sonarr data, but we can log it
-            log(f"Series '{series.title}' (ID: {series.sonarr_id}) missing TVDB ID - will be populated from Sonarr during sync")
+            log(
+                f"Series '{series.title}' (ID: {series.sonarr_id}) missing TVDB ID - "
+                "will be populated from Sonarr during sync"
+            )
             migrated_count += 1
 
     if migrated_count > 0:
@@ -655,6 +657,7 @@ def main():
     # USE_WEBHOOK is false (that flag only gates whether /webhook acts on
     # incoming Sonarr events).
     import uvicorn
+
     from webapp.app import app
 
     log(f"Starting web server on http://{WEBHOOK_HOST}:{WEBHOOK_PORT}")

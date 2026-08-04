@@ -211,6 +211,7 @@ __marimo__/
 
 # Runtime data (cache, known_series.json)
 data
+data_BACKUP
 
 # Local docker-compose override with real, non-placeholder credentials -
 # never commit this, but leave the file itself alone

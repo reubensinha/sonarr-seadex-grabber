@@ -1,8 +1,9 @@
 """Functions for managing seen torrents and series data."""
 
-import os
 import json
-from typing import Union, Any
+import os
+from typing import Any, Union
+
 from .config import DATA_DIR
 from .data_class import Series
 

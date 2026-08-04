@@ -10,8 +10,8 @@ from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from core.config import USE_WEBHOOK
-from main import webhook_event_handler
 from core.utils import log
+from main import webhook_event_handler
 
 router = APIRouter()
 
