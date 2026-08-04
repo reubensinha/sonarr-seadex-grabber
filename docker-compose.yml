@@ -20,16 +20,18 @@ services:
       - QB_PASS=your-qbittorrent-password
       - QB_CATEGORY=anime-sonarr
       
-      # Webhook server configuration
+      # Web UI / webhook server configuration - the dashboard is always
+      # reachable on this port; USE_WEBHOOK only controls whether incoming
+      # Sonarr webhook events trigger a sync
       - WEBHOOK_HOST=0.0.0.0
       - WEBHOOK_PORT=8765
-      - USE_WEBHOOK=false  # Set to true to enable webhook server
+      - USE_WEBHOOK=false  # Set to true to act on Sonarr webhook events
       
       # Optional: Additional configuration
       - STARTUP_SCAN=false
       - SYNC_INTERVAL=86400
     
-    # Port mapping for webhook server
+    # Port mapping for the dashboard/webhook server
     ports:
       - "8765:8765"
     

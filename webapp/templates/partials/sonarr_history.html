@@ -1,0 +1,5 @@
+{% if last %}
+<span class="muted">Last import: {{ last.sourceTitle }} ({{ last.quality }}) &middot; {{ last.date[:10] if last.date else last.date }}</span>
+{% else %}
+<span class="muted">No Sonarr import history found.</span>
+{% endif %}

@@ -1,0 +1,6 @@
+{% if logs %}
+<pre class="log-lines">{% for line in logs %}{{ line }}
+{% endfor %}</pre>
+{% else %}
+<p class="muted">No log activity yet.</p>
+{% endif %}

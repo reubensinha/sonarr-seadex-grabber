@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Main application
+  sonarr-seadex-grabber:
+    image: ghcr.io/reubensinha/sonarr-seadex-grabber:latest
+    container_name: sonarr-seadex-grabber
+    restart: unless-stopped
+    
+    environment:
+      # Sonarr configuration
+      - SONARR_URL=http://sonarr:8989
+      - SONARR_API_KEY=${SONARR_API_KEY}
+      - SONARR_SERIES_TYPE=${SONARR_SERIES_TYPE:-}
+      - SONARR_TAGS=${SONARR_TAGS:-}  # Comma-separated list of tags
+      
+      # qBittorrent configuration
+      - QB_URL=http://qbittorrent:8080
+      - QB_USER=${QB_USER}
+      - QB_PASS=${QB_PASS}
+      - QB_CATEGORY=${QB_CATEGORY:-anime-sonarr}
+      
+      # Web UI / webhook server configuration - the dashboard is always
+      # reachable on this port; USE_WEBHOOK only controls whether incoming
+      # Sonarr webhook events trigger a sync
+      - WEBHOOK_HOST=0.0.0.0
+      - WEBHOOK_PORT=8765
+      - USE_WEBHOOK=${USE_WEBHOOK:-false}  # Set to true to act on Sonarr webhook events
+      
+      # Optional settings
+      - STARTUP_SCAN=false
+      - SYNC_INTERVAL=86400
+    
+    ports:
+      - "8765:8765"
+    
+    volumes:
+      - sonarr-seadex-data:/app/data
+    
+    depends_on:
+      - sonarr
+      - qbittorrent
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8765/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - media-network
+
+  # Sonarr service (optional - remove if you have external Sonarr)
+  sonarr:
+    image: linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    
+    ports:
+      - "8989:8989"
+    
+    volumes:
+      - sonarr-config:/config
+      - ${MEDIA_PATH:-./media}:/media
+      - ${DOWNLOADS_PATH:-./downloads}:/downloads
+    
+    networks:
+      - media-network
+
+  # qBittorrent service (optional - remove if you have external qBittorrent)
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - WEBUI_PORT=8080
+    
+    ports:
+      - "8080:8080"
+      - "6881:6881"
+      - "6881:6881/udp"
+    
+    volumes:
+      - qbittorrent-config:/config
+      - ${DOWNLOADS_PATH:-./downloads}:/downloads
+    
+    networks:
+      - media-network
+
+networks:
+  media-network:
+    driver: bridge
+
+volumes:
+  sonarr-seadex-data:
+    driver: local
+  sonarr-config:
+    driver: local
+  qbittorrent-config:
+    driver: local

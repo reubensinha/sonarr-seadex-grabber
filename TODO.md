@@ -1,0 +1,34 @@
+# TODO
+
+## Issues
+
+- [x] Add Search Box on top to search through all Sonarr series.
+- [x] None of the Ani-List mappings seem to be working, almost everything seems to be added via title search. (Root cause: per-series Resync never refreshed `tvdb_id` from Sonarr. Fixed - Resync now refreshes Sonarr-sourced fields first.)
+- [x] Add mapping via AniList ID is a terrible user experience, if we are manual mapping there should be a text search that then lets the user click the results. (checkboxs -> add, maybe) (Implemented as a live debounced search box with per-result "Add" buttons.)
+- [x] There's a choose button, but no download button? (Split into "Prefer" - pick with no network call - and "Download" - submits to qBittorrent.)
+- [x] There's a resync button, but no re-search button (Added "Re-search Seadex" - re-queries Seadex for known AniList entries only, doesn't touch AniList mapping.)
+- [x] There's no way to remove a mapping, currently there are some series that have automatically mapped to several completely unrelated series. (Added "Remove" - hard-deletes the entry and blacklists its AniList ID so it can't silently reappear via title/TVDB search.)
+- [x] I want to be able to see what the last downloaded torrent is on Sonarr for a given series. (Lazy-loaded per series via Sonarr's history API.)
+- [x] Display the dates for when eachthe Seadex release was published.
+- [x] Have links to Seadex, Sonarr, AniList, and the Torrent, at the relevant locations.
+
+## New Features
+
+- [ ] When a series becomes available on Seadex, unmonitor that season/episodes, from Sonarr. Or at least have a button to let me do that manually, if we are unable to map the Seadex entry to a particular season. (Deferred - season-level mapping between Sonarr seasons and AniList entries doesn't exist yet.)
+- [x] Currently when removing a auto-matched series, it is added to a blacklist that prevents auto-matching in the future. Make this blacklist visible and be able to remove things from the blacklist. (May require creating a seperate settings page, in order to keep the UI clean) (Added a new `/settings` page, linked from the top nav, listing every blacklisted AniList ID with a link out to AniList and an "Un-blacklist" button. Un-blacklisting only clears the block - it doesn't re-add the mapping itself.)
+- [x] UI to adjust how often the schedular runs (Same settings page - an hours input that persists to a new `data/settings.json` override, so `config.yaml` never gets rewritten. If the `SYNC_INTERVAL` environment variable is set, the interval is locked and shown read-only instead - matches how an operator would want to pin it in a container deployment. Takes effect from the next scheduled run, doesn't interrupt an in-progress wait.)
+
+## Next Up
+
+- [x] **Show SeaDex release group + notes per torrent.** Confirmed live against AniList ID 99426: each torrent record has a `releaseGroup` field (e.g. `Stye`, `MegaMTBB`, `Dubarctica`), and each collection entry has a `notes` field (one shared note block per AniList ID explaining the release groups). Both now captured (`clients/seadex_client.py`) and shown per torrent/entry (`webapp/templates/dashboard.html`).
+- [x] **UI clarity pass.** Series title is now visually heavier than the AniList entry title beneath it (which is smaller/muted, with a left-border accent on the entry block). Torrents are now grouped into SeaDex-style release-group cards (a 2-column grid, one card per release group like `MegaMTBB`/`Stye`/`MTBB`/`Dubarctica`) instead of a flat table, with Best/Alt/Dual Audio shown once per card rather than per tracker row - matches the real SeaDex layout, verified against a reference screenshot of AniList 99426.
+- [x] **Mark torrents removed from SeaDex.** A previously-tracked torrent that drops out of a fresh Seadex search is now kept (if it was chosen or preferred) and marked `removed_from_seadex`, with `is_best`/`dual_audio` stripped and a "removed from SeaDex" badge shown. It's excluded from all automatic candidate selection (and can't be re-preferred), leaving manual Download as the only action - self-heals if it reappears on SeaDex later.
+
+- [x] Add Sort and filter options to page, default to sorting by last updated on SeaDex. (Captured SeaDex's own collection-entry `updated` timestamp - separate from a torrent's publish date. Sort dropdown defaults to most-recently-updated-first, with Title A-Z and Sonarr ID as alternates; two filter checkboxes for ignore-status and needs-a-pick, client-side like the existing search box.)
+- [x] Certain entries on Seadex actually point to a search result page on Nyaa with multiple torrents (For example "Arknights: RISE FROM EMBER" seadex-id: 177175, Erai-raws entry). The program currently correctly parses each torrent seperately. However, each torrent appears with it's own prefer and download button. But the group of torrents together should act as a single entry. I.e. Clicking prefer marks that Seadex entry  (not the torrents) as prefered. And clicking download would download all of the torrents. (Turned out to be SeaDex's own `groupedUrl` field - non-empty and identical across every torrent in a multi-part release like Erai-raws' 10 per-episode torrents, empty for standalone/batch releases like RABBIT's single 12-episode torrent. Torrents sharing a `grouped_url` now act as one entry: one Prefer, one Download that submits every part, tracked per-torrent so a new episode arriving later only submits itself. Verified live against the real Arknights entry.)
+- [x] Display what the current chosen release is. (Added a "chosen: {release group}" pill in the entry header itself, instead of only a small pill buried in the release-grid.)
+- [x] Have some way to manually mark a chosen release. (A release has already been downloaded before this application started tracking things, so mark it myself without redownloading) (Does the preffered system serve the same purpose? Investigate.) (Investigated: no, Prefer never sets `chosen` and never touches qBittorrent - it only pauses auto-selection. Added a new "Already have this" action that sets `chosen=True` directly with zero network calls, works even on a `removed_from_seadex` torrent, and marks every part of a multi-part release together.)
+
+## Long Term
+
+- [ ] Generally make Frontend UI better. (Likely involves moving to React/Seperate Frontend Framework, perhaps something in line with my other projects <https://github.com/reubensinha/ln-manager>)

@@ -1,14 +1,28 @@
 """Miscellaneous utility functions."""
 
+import collections
 import datetime
 import time
 from datetime import timedelta
+
+# Bounded in-memory history of recent log lines, so the WebUI can show
+# recent activity without needing a log file or external log aggregator.
+_LOG_BUFFER = collections.deque(maxlen=500)
 
 
 def log(message):
     """Log a message in console with a timestamp."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{timestamp}] {message}")
+    line = f"[{timestamp}] {message}"
+    print(line)
+    _LOG_BUFFER.append(line)
+
+
+def get_recent_logs(n: int = 100) -> list[str]:
+    """Return up to the last n log lines, oldest first."""
+    if n <= 0:
+        return []
+    return list(_LOG_BUFFER)[-n:]
 
 
 class RateLimiter:

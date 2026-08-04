@@ -16,6 +16,18 @@ class Trs:
     dual_audio: bool
     chosen: bool = False
     private: bool = False  # Indicates if this is a private tracker torrent
+    preferred: bool = False  # Manually picked by the user, no download attempted yet
+    published_at: str | None = None  # SeaDex's "created" timestamp for this release
+    release_group: str | None = None  # SeaDex's "releaseGroup" for this torrent
+    # True once this torrent no longer appears in SeaDex's results for its
+    # AniList ID. Stripped of is_best/dual_audio and excluded from automatic
+    # selection when this is set - only a manual Download still works on it.
+    removed_from_seadex: bool = False
+    # SeaDex's "groupedUrl" - non-None and identical across every torrent in
+    # a multi-part release (e.g. per-episode releases from one group), empty
+    # for standalone/batch releases. Torrents sharing this value are treated
+    # as one entry - see main.py's group_siblings().
+    grouped_url: str | None = None
 
     def __repr__(self):
         return (
@@ -44,6 +56,11 @@ class AniListSeries:
     torrents: list[Trs] = field(default_factory=list)
     manually_added: bool = False
     ignore: bool = False
+    notes: str | None = None  # SeaDex's collection-entry notes, explaining release groups
+    # SeaDex's collection-entry "updated" timestamp - when SeaDex staff last
+    # touched this anime's release info (new torrent, edited notes, etc.),
+    # not to be confused with a torrent's own publish date. Used for sorting.
+    seadex_updated_at: str | None = None
 
     def __repr__(self):
         return (
@@ -60,6 +77,8 @@ class AniListSeries:
             "torrents": [torrent.to_dict() for torrent in self.torrents],
             "manually_added": self.manually_added,
             "ignore": self.ignore,
+            "notes": self.notes,
+            "seadex_updated_at": self.seadex_updated_at,
         }
 
     @classmethod
@@ -73,6 +92,8 @@ class AniListSeries:
             torrents=torrents,
             manually_added=data.get("manually_added", False),
             ignore=data.get("ignore", False),
+            notes=data.get("notes"),
+            seadex_updated_at=data.get("seadex_updated_at"),
         )
 
 
@@ -83,10 +104,15 @@ class Series:
     sonarr_id: int
     title: str
     num_seasons: int
+    tvdb_id: int | None = None
+    title_slug: str | None = None  # Sonarr's URL slug, e.g. "delicious-in-dungeon"
     anilist_entries: list[AniListSeries] = field(default_factory=list)
+    # AniList IDs manually removed via the WebUI - excluded from future title/TVDB
+    # search results so a removed mapping can't silently come back.
+    blacklisted_anilist_ids: list[int] = field(default_factory=list)
 
     def __repr__(self):
-        return f"Series(id={self.sonarr_id}, title='{self.title}', anilist_ids={self.anilist_entries})"
+        return f"Series(id={self.sonarr_id}, title='{self.title}', tvdb_id={self.tvdb_id}, anilist_ids={self.anilist_entries})"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -94,7 +120,10 @@ class Series:
             "sonarr_id": self.sonarr_id,
             "title": self.title,
             "num_seasons": self.num_seasons,
+            "tvdb_id": self.tvdb_id,
+            "title_slug": self.title_slug,
             "anilist_entries": [entry.to_dict() for entry in self.anilist_entries],
+            "blacklisted_anilist_ids": self.blacklisted_anilist_ids,
         }
 
     @classmethod
@@ -107,5 +136,8 @@ class Series:
             sonarr_id=data["sonarr_id"],
             title=data["title"],
             num_seasons=data["num_seasons"],
+            tvdb_id=data.get("tvdb_id"),
+            title_slug=data.get("title_slug"),
             anilist_entries=anilist_entries,
+            blacklisted_anilist_ids=data.get("blacklisted_anilist_ids", []),
         )

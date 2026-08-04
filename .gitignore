@@ -209,8 +209,9 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-Readme.txt
+# Runtime data (cache, known_series.json)
 data
-*.pyc
-.dockerignore
-Dockerfile
+
+# Local docker-compose override with real, non-placeholder credentials -
+# never commit this, but leave the file itself alone
+my-docker-compose.yml

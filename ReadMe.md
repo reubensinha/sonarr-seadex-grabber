@@ -78,6 +78,51 @@ pip install -r requirements.txt
 python main.py
 ```
 
+This starts the sync loop plus a web server on `webhook.host:webhook.port`
+(default `http://localhost:8765`) that serves both the dashboard and the
+Sonarr webhook endpoint - it's always running, regardless of whether
+`webhook.enabled` is turned on.
+
+## WebUI
+
+Open `http://<host>:8765/` for a dashboard showing monitored series, their
+AniList mappings, tracked torrents, and recent activity. It also has a
+client-side search box to quickly filter the series list by title. From
+there you can:
+
+- Trigger a full sync, or **Resync** a single series (refreshes its
+  Sonarr-sourced fields, AniList mapping, and Seadex torrents)
+- **Re-search Seadex** for a series - re-queries Seadex for its existing
+  AniList entries only, without touching AniList mapping (safe to use after
+  cleaning up a mapping, won't reintroduce a bad title-search match)
+- Ignore/un-ignore an AniList entry
+- **Remove** an AniList entry entirely - unlike Ignore, this also blacklists
+  the AniList ID so it can't silently reappear via a future title/TVDB search
+- **Prefer** a torrent (marks your pick with no network call - useful for
+  private-tracker releases the app can't auto-download) or **Download** it
+  (submits to qBittorrent). A pending preferred-but-undownloaded pick pauses
+  automatic best-selection for that entry until you explicitly download
+  something
+- Add a manual AniList mapping via a live search box (type a title, click a
+  result to add it) instead of typing a raw AniList ID
+- Lazy-load the most recent Sonarr import event for a series (release name,
+  date, quality)
+- Follow links out to the series' Sonarr page, its AniList page, its SeaDex
+  entry, and each torrent's own page
+
+This replaces hand-editing `data/known_series.json`.
+
+## Sonarr Webhook Setup
+
+With `webhook.enabled` (or `USE_WEBHOOK=true`) set, Sonarr can trigger an
+immediate sync instead of waiting for the next scheduled run. In Sonarr, go
+to **Settings → Connect → Add → Webhook** and configure:
+
+- **URL:** `http://<host>:8765/webhook`
+- **Method:** `POST`
+- **Triggers:** On Series Add, On Series Delete, On Series Edit
+
 ## Planned
 
 - [x] Move config.py to more persistent location.
+- [x] Add a WebUI.

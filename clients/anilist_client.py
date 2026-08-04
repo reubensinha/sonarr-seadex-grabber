@@ -4,9 +4,10 @@ import time
 
 import requests
 
-from config import ANILIST_API_URL
-from data_class import AniListSeries
-from utils import log, RateLimiter
+from core.config import ANILIST_API_URL
+from core.data_class import AniListSeries
+from core.utils import log, RateLimiter
+from .id_mapper import id_mapper
 
 
 class AniListClient:
@@ -15,6 +16,112 @@ class AniListClient:
     def __init__(self):
         self.rate_limiter = RateLimiter(max_requests=30, window_seconds=60)
 
+    def get_series_by_anilist_ids(self, anilist_ids: list[int]) -> list[AniListSeries]:
+        """
+        Get series information directly from AniList IDs.
+        This is much more reliable than searching by title.
+        """
+        if not anilist_ids:
+            return []
+
+        # Query to get multiple series by their IDs
+        query = """
+        query ($ids: [Int]) {
+            Page(perPage: 50) {
+                media(id_in: $ids, type: ANIME) {
+                    id
+                    title {
+                        romaji
+                        english
+                        native
+                    }
+                    format
+                    episodes
+                    seasonYear
+                    status
+                }
+            }
+        }
+        """
+
+        variables = {"ids": anilist_ids}
+
+        # Use the retry mechanism
+        response_data = self._make_request_with_retry(query, variables)
+        if not response_data:
+            log(f"Failed to get response from AniList for IDs {anilist_ids}")
+            return []
+
+        results = response_data.get("data", {}).get("Page", {}).get("media", [])
+
+        if not results:
+            log(f"No AniList results found for IDs {anilist_ids}")
+            return []
+
+        anilist_series = []
+        for item in results:
+            # Extract relevant data with safe defaults
+            anilist_id = item.get("id")
+            title_obj = item.get("title", {})
+            season_year = item.get("seasonYear")
+            format_type = item.get("format", "")
+            status = item.get("status", "")
+
+            # Skip if missing essential data
+            if not anilist_id or not season_year:
+                continue
+
+            # Filter out non-TV series formats to reduce irrelevant results
+            if format_type not in ["TV", "TV_SHORT", "ONA", "OVA"]:
+                continue
+
+            # Skip cancelled or not yet released series
+            if status in ["CANCELLED", "NOT_YET_RELEASED"]:
+                continue
+
+            # Get the best available title (prefer English, then Romaji, then Native)
+            title = (
+                title_obj.get("english")
+                or title_obj.get("romaji")
+                or title_obj.get("native")
+                or "Unknown Title"
+            )
+
+            # Create AniListSeries object
+            anilist_entry = AniListSeries(
+                anilist_id=anilist_id,
+                title=title,
+                season_year=season_year,
+                torrents=[],
+                manually_added=False,
+                ignore=False,
+            )
+
+            anilist_series.append(anilist_entry)
+            log(f"Found AniList entry: {title} (ID: {anilist_id}, Year: {season_year})")
+
+        # Sort by season year to get chronological order
+        anilist_series.sort(key=lambda x: x.season_year)
+
+        return anilist_series
+
+    def get_series_by_tvdb_id(self, tvdb_id: int) -> list[AniListSeries]:
+        """
+        Get series information using TVDB ID by mapping it to AniList IDs.
+        This is the preferred method for getting AniList data from Sonarr series.
+        """
+        log(f"Looking up AniList series for TVDB ID {tvdb_id}")
+
+        # Map TVDB ID to AniList IDs
+        anilist_ids = id_mapper.tvdb_to_anilist_ids(tvdb_id)
+
+        if not anilist_ids:
+            log(f"No AniList IDs found for TVDB ID {tvdb_id}")
+            return []
+
+        # Get series information from AniList
+        return self.get_series_by_anilist_ids(anilist_ids)
+
     def _make_request_with_retry(self, query, variables, max_retries=3):
         """Make a request to AniList API with rate limiting and retry logic."""
         for attempt in range(max_retries + 1):
@@ -22,8 +129,13 @@ class AniListClient:
                 # Wait if we need to respect rate limits
                 self.rate_limiter.wait_if_needed()
 
+                # Handle config type issues
+                api_url = ANILIST_API_URL
+                if not isinstance(api_url, str):
+                    api_url = "https://graphql.anilist.co"  # Fallback
+
                 response = requests.post(
-                    ANILIST_API_URL,
+                    api_url,
                     json={"query": query, "variables": variables},
                     timeout=10,
                 )

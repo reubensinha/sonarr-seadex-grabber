@@ -1,0 +1,11 @@
+{% if status.in_progress %}
+<span class="pill pill-busy">
+  Syncing{% if status.current_target %} series {{ status.current_target }}{% else %} all series{% endif %}
+  ({{ status.trigger_source }})
+</span>
+{% else %}
+<span class="pill pill-idle">Idle</span>
+<span class="muted">last run: {{ status.finished_at | fmt_time }}</span>
+{% if status.last_error %}<span class="pill pill-error" title="{{ status.last_error }}">last sync errored</span>{% endif %}
+{% endif %}
+<span class="muted">next scheduled: {{ status.next_scheduled_at | fmt_eta }}</span>

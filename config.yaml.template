@@ -39,7 +39,6 @@ scoring:
     "Nyaa": 0 # Nyaa is the baseline (0 points)
     "AB": -10
     "default": 0 # Default penalty for unknown trackers
-  include_private: true # Whether to include private tracker torrents in scoring
 
 # qBittorrent configuration
 # Use environment variables: QB_URL, QB_USER, QB_PASS, QB_CATEGORY

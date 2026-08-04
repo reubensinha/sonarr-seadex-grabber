@@ -3,8 +3,8 @@
 import os
 import json
 from typing import Union, Any
-from config import DATA_DIR
-from data_class import Series
+from .config import DATA_DIR
+from .data_class import Series
 
 os.makedirs(DATA_DIR, exist_ok=True)
 

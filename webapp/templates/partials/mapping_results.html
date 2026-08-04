@@ -1,0 +1,16 @@
+{% if not query %}
+{% elif not results %}
+<p class="muted">No AniList results for "{{ query }}".</p>
+{% else %}
+<ul class="mapping-result-list">
+  {% for r in results %}
+  <li>
+    <span>{{ r.title }} ({{ r.season_year }}) &middot; AniList {{ r.anilist_id }}</span>
+    <form method="post" action="/series/{{ sonarr_id }}/mapping">
+      <input type="hidden" name="anilist_id" value="{{ r.anilist_id }}">
+      <button type="submit">Add</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

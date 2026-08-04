@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Seadex Sonarr Grabber{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1><a href="/">Seadex Sonarr Grabber</a></h1>
+    <nav class="topnav"><a href="/settings">Settings</a></nav>
+    <div id="status-banner" hx-get="/partials/status" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

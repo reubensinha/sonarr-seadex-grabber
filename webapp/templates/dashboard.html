@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="controls">
+  <form method="post" action="/sync">
+    <button type="submit" class="primary">Sync Now (all series)</button>
+  </form>
+  <input type="text" id="series-search" class="search-box" placeholder="Search series by title...">
+  <form method="get" action="/">
+    <label class="muted" for="sort-select">Sort:</label>
+    <select id="sort-select" name="sort" onchange="this.form.submit()">
+      <option value="updated" {{ 'selected' if sort == 'updated' }}>Last updated (SeaDex)</option>
+      <option value="title" {{ 'selected' if sort == 'title' }}>Title (A-Z)</option>
+      <option value="sonarr_id" {{ 'selected' if sort == 'sonarr_id' }}>Sonarr ID</option>
+    </select>
+  </form>
+  <label class="muted"><input type="checkbox" id="filter-show-ignored" checked> Show ignored entries</label>
+  <label class="muted"><input type="checkbox" id="filter-needs-pick"> Only entries needing a pick</label>
+  <span class="muted">Sync interval: every {{ (sync_interval // 3600) }}h. Actions are ignored while a sync is running.</span>
+</section>
+
+<section class="logs">
+  <h2>Recent activity</h2>
+  <div id="log-panel" hx-get="/partials/logs" hx-trigger="load, every 3s" hx-swap="innerHTML"></div>
+</section>
+
+<section class="series-list">
+  <h2>Series (<span id="series-count">{{ series_list | length }}</span>)</h2>
+
+  {% for series in series_list %}
+  <article class="card" data-title="{{ series.title | lower }}">
+    <div class="card-header">
+      {% if sonarr_url and series.title_slug %}
+      <h3><a href="{{ sonarr_url }}/series/{{ series.title_slug }}" target="_blank" rel="noopener">{{ series.title }}</a></h3>
+      {% else %}
+      <h3>{{ series.title }}</h3>
+      {% endif %}
+      <span class="muted">Sonarr ID {{ series.sonarr_id }}{% if series.tvdb_id %} &middot; TVDB {{ series.tvdb_id }}{% endif %} &middot; {{ series.num_seasons }} season(s)</span>
+      <button type="button" class="link-button" hx-get="/series/{{ series.sonarr_id }}/sonarr-history" hx-trigger="click" hx-swap="outerHTML">Show Sonarr history</button>
+      <form method="post" action="/series/{{ series.sonarr_id }}/sync">
+        <button type="submit">Resync this series</button>
+      </form>
+      <form method="post" action="/series/{{ series.sonarr_id }}/research">
+        <button type="submit">Re-search Seadex</button>
+      </form>
+    </div>
+
+    {% if not series.anilist_entries %}
+    <p class="muted">No AniList mapping found yet.</p>
+    {% endif %}
+
+    {% for entry in series.anilist_entries %}
+    {% set chosen_torrents = entry.torrents | selectattr('chosen') | list %}
+    <div class="entry {{ 'entry-ignored' if entry.ignore }}" data-ignored="{{ 'true' if entry.ignore else 'false' }}" data-chosen="{{ 'true' if chosen_torrents else 'false' }}">
+      <div class="entry-header">
+        <a class="entry-title" href="https://anilist.co/anime/{{ entry.anilist_id }}" target="_blank" rel="noopener">{{ entry.title }}</a>
+        <a class="muted" href="https://releases.moe/{{ entry.anilist_id }}/" target="_blank" rel="noopener">SeaDex</a>
+        <span class="muted">({{ entry.season_year }}) &middot; AniList {{ entry.anilist_id }} &middot; updated {{ entry.seadex_updated_at[:10] if entry.seadex_updated_at else '—' }}</span>
+        {% if chosen_torrents %}
+        <span class="pill pill-idle">chosen: {{ chosen_torrents[0].release_group or chosen_torrents[0].tracker }}{% if chosen_torrents | length > 1 %} ({{ chosen_torrents | length }} parts){% endif %}</span>
+        {% endif %}
+        {% if entry.manually_added %}<span class="pill pill-idle">manual</span>{% endif %}
+        {% if entry.ignore %}<span class="pill pill-error">ignored</span>{% endif %}
+        <form method="post" action="/entries/{{ entry.anilist_id }}/ignore">
+          <button type="submit">{{ 'Un-ignore' if entry.ignore else 'Ignore' }}</button>
+        </form>
+        <form method="post" action="/entries/{{ entry.anilist_id }}/remove" onsubmit="return confirm('Remove this mapping? It will be blacklisted so it cannot be auto-matched again.');">
+          <button type="submit" class="danger">Remove</button>
+        </form>
+      </div>
+
+      {% if entry.torrents %}
+      <form method="post" action="/entries/{{ entry.anilist_id }}/download" class="release-form">
+        <div class="release-grid">
+          {% for group in entry.torrents|group_by_release %}
+          <div class="release-block">
+            <div class="release-block-header">
+              <span class="release-block-name">{{ group.name }}</span>
+              {% if group.has_best %}<span class="pill pill-best">BEST</span>{% endif %}
+              {% if group.is_alt %}<span class="pill pill-alt">ALT</span>{% endif %}
+              {% if group.has_dual_audio %}<span class="pill pill-dual">DUAL AUDIO</span>{% endif %}
+            </div>
+            {% for item in group.release_items %}
+              {% if item.total_count > 1 %}
+              {# Multi-part release (SeaDex groupedUrl) - several torrents that only add up to the complete release together, acts as one entry. #}
+              <div class="release-row {{ 'chosen-row' if item.chosen_count == item.total_count }}" title="{{ item.total_count }} linked releases via SeaDex's groupedUrl - Prefer/Download act on all of them together">
+                <a href="{{ item.grouped_url }}" target="_blank" rel="noopener">{{ item.total_count }} releases ({{ item.torrents[0].tracker }})</a>
+                <span class="muted">score {{ item.torrents[0] | score }}</span>
+                <span class="release-actions">
+                  {% if item.chosen_count == item.total_count %}
+                  <span class="pill pill-idle">chosen</span>
+                  {% else %}
+                  {% if item.chosen_count > 0 %}<span class="pill pill-preferred">{{ item.chosen_count }}/{{ item.total_count }} downloaded</span>{% endif %}
+                  <button type="submit" formaction="/entries/{{ entry.anilist_id }}/prefer" name="torrent_id" value="{{ item.torrents[0].id }}">Prefer</button>
+                  <button type="submit" formaction="/entries/{{ entry.anilist_id }}/download" name="torrent_id" value="{{ item.torrents[0].id }}">Download</button>
+                  <button type="submit" class="link-button" formaction="/entries/{{ entry.anilist_id }}/mark-downloaded" name="torrent_id" value="{{ item.torrents[0].id }}" title="Mark as already downloaded, without sending it to qBittorrent">Already have this</button>
+                  {% endif %}
+                </span>
+              </div>
+              {% else %}
+              {% set t = item.torrents[0] %}
+              <div class="release-row {{ 'chosen-row' if t.chosen }} {{ 'row-removed' if t.removed_from_seadex }}" title="{{ t | breakdown }}">
+                <a href="{{ t.url }}" target="_blank" rel="noopener">{{ t.tracker }}</a>
+                {% if t.removed_from_seadex %}<span class="pill pill-removed">removed from SeaDex</span>{% endif %}
+                {% if t.private %}<span class="pill pill-error">private</span>{% endif %}
+                <span class="muted">{{ t.published_at[:10] if t.published_at else '—' }}</span>
+                <span class="muted">score {{ t | score }}</span>
+                <span class="release-actions">
+                  {% if t.chosen %}
+                  <span class="pill pill-idle">chosen</span>
+                  {% elif t.removed_from_seadex %}
+                  <button type="submit" formaction="/entries/{{ entry.anilist_id }}/download" name="torrent_id" value="{{ t.id }}">Download</button>
+                  <button type="submit" class="link-button" formaction="/entries/{{ entry.anilist_id }}/mark-downloaded" name="torrent_id" value="{{ t.id }}" title="Mark as already downloaded, without sending it to qBittorrent">Already have this</button>
+                  {% elif t.preferred %}
+                  <span class="pill pill-preferred">preferred</span>
+                  <button type="submit" formaction="/entries/{{ entry.anilist_id }}/download" name="torrent_id" value="{{ t.id }}">Download</button>
+                  <button type="submit" class="link-button" formaction="/entries/{{ entry.anilist_id }}/mark-downloaded" name="torrent_id" value="{{ t.id }}" title="Mark as already downloaded, without sending it to qBittorrent">Already have this</button>
+                  {% else %}
+                  <button type="submit" formaction="/entries/{{ entry.anilist_id }}/prefer" name="torrent_id" value="{{ t.id }}">Prefer</button>
+                  <button type="submit" formaction="/entries/{{ entry.anilist_id }}/download" name="torrent_id" value="{{ t.id }}">Download</button>
+                  <button type="submit" class="link-button" formaction="/entries/{{ entry.anilist_id }}/mark-downloaded" name="torrent_id" value="{{ t.id }}" title="Mark as already downloaded, without sending it to qBittorrent">Already have this</button>
+                  {% endif %}
+                </span>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </form>
+      {% else %}
+      <p class="muted">No torrents found yet for this entry.</p>
+      {% endif %}
+
+      {% if entry.notes %}
+      <p class="entry-notes">{{ entry.notes }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="mapping-search">
+      <input type="text" name="q" placeholder="Search AniList to add a mapping..."
+             hx-get="/series/{{ series.sonarr_id }}/mapping/search"
+             hx-trigger="keyup changed delay:400ms"
+             hx-target="#mapping-results-{{ series.sonarr_id }}"
+             hx-swap="innerHTML">
+      <div id="mapping-results-{{ series.sonarr_id }}" class="mapping-results"></div>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+
+<script src="/static/dashboard.js"></script>
+{% endblock %}

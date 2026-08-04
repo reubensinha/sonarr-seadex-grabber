@@ -31,6 +31,14 @@ Use `docker-compose.full.yml` for a complete setup:
 docker-compose -f docker-compose.full.yml up -d
 ```
 
+### Scheduled-only mode (no webhook)
+
+There's no separate compose file for this - it's the default. Leave
+`USE_WEBHOOK=false` (or omit it) in either option above and the container
+only runs on `SYNC_INTERVAL`'s schedule. The dashboard is still reachable
+either way; the flag only controls whether incoming Sonarr webhook events
+also trigger a sync.
+
 ## Configuration
 
 ### Environment Variables
@@ -64,10 +72,15 @@ volumes:
 
 ## Accessing the Application
 
-- **Webhook Server:** http://localhost:8000
-- **Health Check:** http://localhost:8000/health
+- **Dashboard / WebUI:** http://localhost:8765
+- **Sonarr webhook URL:** http://localhost:8765/webhook
+- **Health Check:** http://localhost:8765/health
 - **Sonarr (if using full stack):** http://localhost:8989
 - **qBittorrent (if using full stack):** http://localhost:8080
+
+The dashboard and health check are always reachable on this port, regardless
+of `USE_WEBHOOK` - that variable only controls whether incoming Sonarr
+webhook events trigger a sync.
 
 ## Data Persistence
 
@@ -107,5 +120,17 @@ docker-compose up -d
 
 4. **Health check:**
    ```bash
-   curl http://localhost:8000/health
+   curl http://localhost:8765/health
    ```
+
+## Publishing a new image
+
+For maintainers pushing a new build to GHCR:
+
+```bash
+docker build -t sonarr-seadex-grabber:latest .
+docker tag sonarr-seadex-grabber:latest ghcr.io/reubensinha/sonarr-seadex-grabber:latest
+docker tag sonarr-seadex-grabber:latest ghcr.io/reubensinha/sonarr-seadex-grabber:vX.Y.Z
+docker push ghcr.io/reubensinha/sonarr-seadex-grabber:latest
+docker push ghcr.io/reubensinha/sonarr-seadex-grabber:vX.Y.Z
+```
