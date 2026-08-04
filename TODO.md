@@ -40,3 +40,4 @@
 - [ ] Allow for URLs and conifgs for Sonarr and qBittorrent to be set in the UI and instruct users to set it up if blank. (Allow for env var lock similar to sync interval.)
 - [ ] Add Radarr Support.
 - [ ] When sync interval set to 0, disable automatic sync, make it manual sync only.
+- [ ] Monitor and unmonitor shows. Basically a feature to allows the use case of "I've already watchded this show and am no longer interested in downloading it, regardless of new seadex releases. However, I want to keep the show in my library in case of future seasons, which I do want downloaded"
