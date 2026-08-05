@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 
 from core import sync_manager
 from core.cache import load_json
-from core.config import KNOWN_SERIES_FILE, SONARR_URL
+from core.config import KNOWN_SERIES_FILE
 from core.data_class import Series
 from core.utils import get_recent_logs
 from webapp.app import templates
@@ -34,6 +34,12 @@ def dashboard(request: Request, sort: str = "updated"):
     known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
     known_series.sort(key=lambda s: _sort_key(s, sort), reverse=(sort == "updated"))
 
+    sonarr_url = sync_manager.get_sonarr_url()
+    sonarr_api_key = sync_manager.get_sonarr_api_key()
+    qb_url = sync_manager.get_qb_url()
+    qb_user = sync_manager.get_qb_user()
+    qb_pass = sync_manager.get_qb_pass()
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -41,7 +47,9 @@ def dashboard(request: Request, sort: str = "updated"):
             "series_list": known_series,
             "status": sync_manager.get_status(),
             "sync_interval": sync_manager.get_sync_interval(),
-            "sonarr_url": SONARR_URL,
+            "sonarr_url": sonarr_url,
+            "sonarr_configured": bool(sonarr_url and sonarr_api_key),
+            "qb_configured": bool(qb_url and qb_user and qb_pass),
             "sort": sort,
         },
     )

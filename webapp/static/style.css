@@ -224,3 +224,10 @@ form { display: inline-flex; gap: 0.5rem; align-items: center; margin: 0; }
 .mapping-results { margin-top: 0.5rem; }
 .mapping-result-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
 .mapping-result-list li { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; font-size: 0.85rem; }
+
+.settings-field { display: block; margin-bottom: 0.6rem; }
+.settings-field label { display: block; margin-bottom: 0.2rem; }
+.settings-field input[type="text"], .settings-field input[type="password"] { width: 100%; max-width: 24rem; }
+.settings-field p { margin: 0; }
+.banner-warning { display: block; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); border-radius: 8px; padding: 0.6rem 1rem; margin-bottom: 1rem; font-size: 0.9rem; }
+.banner-warning a { color: inherit; font-weight: 600; }

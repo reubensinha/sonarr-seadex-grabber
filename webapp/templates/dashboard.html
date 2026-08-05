@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 
+{% if not sonarr_configured %}
+<div class="banner-warning">Sonarr isn't configured yet - <a href="/settings">set it up in Settings</a>.</div>
+{% endif %}
+{% if not qb_configured %}
+<div class="banner-warning">qBittorrent isn't configured yet - <a href="/settings">set it up in Settings</a>.</div>
+{% endif %}
+
 <section class="controls">
   <form method="post" action="/sync">
     <button type="submit" class="primary">Sync Now (all series)</button>

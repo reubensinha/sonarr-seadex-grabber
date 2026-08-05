@@ -99,7 +99,12 @@ except (ValueError, TypeError):
     SYNC_INTERVAL = 86400
 
 # Sonarr (sensitive - prefer environment variables)
+# URL/API key are also adjustable at runtime from the Settings page, unless
+# the respective environment variable is set, in which case it's locked -
+# same pattern as SYNC_INTERVAL_LOCKED.
+SONARR_URL_LOCKED = os.getenv("SONARR_URL") is not None
 SONARR_URL = get_env_or_config("SONARR_URL", get_nested_config(_config, ["sonarr", "url"]))
+SONARR_API_KEY_LOCKED = os.getenv("SONARR_API_KEY") is not None
 SONARR_API_KEY = get_env_or_config("SONARR_API_KEY", get_nested_config(_config, ["sonarr", "api_key"]))
 SONARR_SERIES_TYPE = get_env_or_config(
     "SONARR_SERIES_TYPE", get_nested_config(_config, ["sonarr", "series_type"]), ""
@@ -168,9 +173,16 @@ SCORING_TRACKER_WEIGHTS = get_nested_config(_config, ["scoring", "tracker_weight
 }
 
 # qBittorrent (sensitive - prefer environment variables)
+# Also adjustable at runtime from the Settings page, unless the respective
+# environment variable is set, in which case it's locked - same pattern as
+# SYNC_INTERVAL_LOCKED.
+QB_URL_LOCKED = os.getenv("QB_URL") is not None
 QB_URL = get_env_or_config("QB_URL", get_nested_config(_config, ["qbittorrent", "url"]))
+QB_USER_LOCKED = os.getenv("QB_USER") is not None
 QB_USER = get_env_or_config("QB_USER", get_nested_config(_config, ["qbittorrent", "username"]))
+QB_PASS_LOCKED = os.getenv("QB_PASS") is not None
 QB_PASS = get_env_or_config("QB_PASS", get_nested_config(_config, ["qbittorrent", "password"]))
+QB_CATEGORY_LOCKED = os.getenv("QB_CATEGORY") is not None
 QB_CATEGORY = get_env_or_config(
     "QB_CATEGORY", get_nested_config(_config, ["qbittorrent", "category"]), "anime-sonarr"
 )
