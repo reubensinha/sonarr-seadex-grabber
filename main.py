@@ -413,6 +413,29 @@ def set_preferred_torrents(anilist_entry: AniListSeries, torrents: list[Trs]) ->
     return True
 
 
+def pause_series(series_item: Series) -> None:
+    """Ignore every currently-known AniList entry for series_item - stops
+    auto-downloading new/alternate releases for all of them, without
+    touching Sonarr's monitoring or removing anything from the library.
+
+    A future season discovered later via refresh_anilist_mapping still
+    defaults to ignore=False (see AniListSeries.ignore), so it's unaffected
+    by a prior pause and gets auto-synced/downloaded normally - that's what
+    makes "pause this show but still grab future seasons" work with no
+    separate series-level flag needed.
+    """
+    for entry in series_item.anilist_entries:
+        entry.ignore = True
+    log(f"Paused {len(series_item.anilist_entries)} AniList entr(y/ies) for '{series_item.title}'")
+
+
+def resume_series(series_item: Series) -> None:
+    """Un-ignore every currently-known AniList entry for series_item."""
+    for entry in series_item.anilist_entries:
+        entry.ignore = False
+    log(f"Resumed {len(series_item.anilist_entries)} AniList entr(y/ies) for '{series_item.title}'")
+
+
 def refresh_anilist_mapping(series_item: Series, anilist: AniListClient) -> None:
     """Refresh series_item's AniList entries via TVDB mapping or title search, in place."""
     found_anilist_entries: list[AniListSeries] = []
@@ -604,18 +627,46 @@ def webhook_event_handler(event_type: str, webhook_data: dict):
         log(f"Error handling webhook event '{event_type}': {e}")
 
 
-def scheduled_update():
-    """Continuously run update_all_series on schedule."""
+_DISABLED_POLL_SECONDS = 60  # how often to re-check whether auto-sync has been re-enabled
 
-    if STARTUP_SCAN:
-        first_scan = True
-        log("Performing initial data population (fetching series and torrent info)...")
-        log("This will populate the cache but not send any torrents to qBittorrent")
-    else:
-        first_scan = False
+
+def scheduled_update():
+    """Continuously run update_all_series on schedule, unless disabled
+    (sync interval <= 0 - manual sync only).
+
+    A disabled interval suppresses the one-time STARTUP_SCAN population pass
+    too, not just the recurring loop - that pass otherwise re-runs on every
+    container restart/update regardless of the user's "manual only" intent,
+    which would defeat the point. `first_scan` stays pending across disabled
+    poll cycles, so if the user later raises the interval above 0 from
+    Settings, the deferred population pass runs then, on the first cycle
+    sync is actually allowed, instead of being skipped forever.
+    """
+
+    first_scan = STARTUP_SCAN
+    warned_disabled = False
 
     while True:
+        interval = sync_manager.get_sync_interval()
+
+        if interval <= 0:
+            if not warned_disabled:
+                log(
+                    "Automatic sync (including the startup population scan, if any) is "
+                    "disabled - sync interval is 0. Manual sync only until re-enabled from Settings."
+                )
+                warned_disabled = True
+            sync_manager.set_next_scheduled_at(None)
+            time.sleep(_DISABLED_POLL_SECONDS)
+            continue
+
+        warned_disabled = False
+
         try:
+            if first_scan:
+                log("Performing initial data population (fetching series and torrent info)...")
+                log("This will populate the cache but not send any torrents to qBittorrent")
+
             log("Starting scheduled update...")
             sync_manager.run_full_sync(
                 trigger_source="scheduled", skip_qbittorrent=first_scan
@@ -626,6 +677,9 @@ def scheduled_update():
                 first_scan = False
 
             interval = sync_manager.get_sync_interval()
+            if interval <= 0:
+                continue  # just became disabled - loop back to the pause branch above
+
             sync_manager.set_next_scheduled_at(time.time() + interval)
             log(f"Scheduled update completed. Next update in {interval} seconds...")
             time.sleep(interval)
@@ -636,6 +690,8 @@ def scheduled_update():
         except Exception as e:
             interval = sync_manager.get_sync_interval()
             log(f"Error in scheduled update: {e}")
+            if interval <= 0:
+                continue  # disabled mid-retry - loop back to the pause branch above
             log(f"Retrying in {interval} seconds...")
             time.sleep(interval)
 
@@ -644,7 +700,10 @@ def main():
     """Main entry point for the script."""
     log("Starting Seadex Sonarr Monitor...")
     _interval = sync_manager.get_sync_interval()
-    log(f"Sync interval: {_interval} seconds ({_interval // 3600} hours)")
+    if _interval <= 0:
+        log("Automatic sync: disabled (manual sync only)")
+    else:
+        log(f"Sync interval: {_interval} seconds ({_interval // 3600} hours)")
     log(f"Webhook processing: {'Enabled' if USE_WEBHOOK else 'Disabled'}")
 
     # Start scheduled updates in a background thread.

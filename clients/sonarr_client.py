@@ -2,14 +2,15 @@
 
 import requests
 
-from core.config import SONARR_API_KEY, SONARR_SERIES_TYPE, SONARR_TAGS, SONARR_URL
+from core import sync_manager
+from core.config import SONARR_SERIES_TYPE, SONARR_TAGS
 from core.data_class import Series
 from core.utils import log
 
 
 def get_headers():
     """Get headers for Sonarr API requests."""
-    api_key = SONARR_API_KEY
+    api_key = sync_manager.get_sonarr_api_key()
     if api_key and isinstance(api_key, str):
         return {"X-Api-Key": api_key}
     return {"X-Api-Key": ""}
@@ -43,7 +44,7 @@ class SonarrClient:
 
     def get_monitored_series(self) -> list[Series] | None:
         """Get the list of monitored series from Sonarr. Returns None if there's an error."""
-        url = f"{SONARR_URL}/api/v3/series"
+        url = f"{sync_manager.get_sonarr_url()}/api/v3/series"
         try:
             response = requests.get(url, headers=get_headers(), timeout=10)
             response.raise_for_status()
@@ -103,7 +104,7 @@ class SonarrClient:
 
     def get_series_by_id(self, sonarr_id: int) -> Series | None:
         """Fetch a single series from Sonarr by its ID. Returns None on error or if missing."""
-        url = f"{SONARR_URL}/api/v3/series/{sonarr_id}"
+        url = f"{sync_manager.get_sonarr_url()}/api/v3/series/{sonarr_id}"
         try:
             response = requests.get(url, headers=get_headers(), timeout=10)
             response.raise_for_status()
@@ -119,7 +120,7 @@ class SonarrClient:
 
         Returns a list of {sourceTitle, date, quality} dicts, newest first.
         """
-        url = f"{SONARR_URL}/api/v3/history/series"
+        url = f"{sync_manager.get_sonarr_url()}/api/v3/history/series"
         try:
             response = requests.get(
                 url,

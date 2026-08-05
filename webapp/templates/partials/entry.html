@@ -1,0 +1,89 @@
+{% set chosen_torrents = entry.torrents | selectattr('chosen') | list %}
+{% set trackers = entry.torrents | map(attribute='tracker') | unique | join(',') %}
+<div class="entry {{ 'entry-ignored' if entry.ignore }}" id="entry-{{ entry.anilist_id }}"
+     data-ignored="{{ 'true' if entry.ignore else 'false' }}"
+     data-chosen="{{ 'true' if chosen_torrents else 'false' }}"
+     data-trackers="{{ trackers }}"
+     data-has-best="{{ 'true' if entry.torrents | selectattr('is_best') | list else 'false' }}"
+     data-has-dual-audio="{{ 'true' if entry.torrents | selectattr('dual_audio') | list else 'false' }}"
+     data-has-removed="{{ 'true' if entry.torrents | selectattr('removed_from_seadex') | list else 'false' }}"
+     data-has-preferred="{{ 'true' if entry.torrents | selectattr('preferred') | list else 'false' }}"
+     data-has-private="{{ 'true' if entry.torrents | selectattr('private') | list else 'false' }}">
+  <div class="entry-header">
+    <a class="entry-title" href="https://anilist.co/anime/{{ entry.anilist_id }}" target="_blank" rel="noopener">{{ entry.title }}</a>
+    <a class="muted" href="https://releases.moe/{{ entry.anilist_id }}/" target="_blank" rel="noopener">SeaDex</a>
+    <span class="muted">({{ entry.season_year }}) &middot; AniList {{ entry.anilist_id }} &middot; updated {{ entry.seadex_updated_at[:10] if entry.seadex_updated_at else '—' }}</span>
+    {% if chosen_torrents %}
+    <span class="pill pill-idle">chosen: {{ chosen_torrents[0].release_group or chosen_torrents[0].tracker }}{% if chosen_torrents | length > 1 %} ({{ chosen_torrents | length }} parts){% endif %}</span>
+    {% endif %}
+    {% if entry.manually_added %}<span class="pill pill-idle">manual</span>{% endif %}
+    {% if entry.ignore %}<span class="pill pill-error">ignored</span>{% endif %}
+    <button type="button" hx-post="/entries/{{ entry.anilist_id }}/ignore" hx-target="closest .card" hx-swap="outerHTML">{{ 'Un-ignore' if entry.ignore else 'Ignore' }}</button>
+    <button type="button" class="danger" hx-post="/entries/{{ entry.anilist_id }}/remove" hx-target="closest .card" hx-swap="outerHTML" hx-confirm="Remove this mapping? It will be blacklisted so it cannot be auto-matched again.">Remove</button>
+  </div>
+
+  {% if entry.torrents %}
+  <div class="release-grid">
+    {% for group in entry.torrents|group_by_release %}
+    <div class="release-block">
+      <div class="release-block-header">
+        <span class="release-block-name">{{ group.name }}</span>
+        {% if group.has_best %}<span class="pill pill-best">BEST</span>{% endif %}
+        {% if group.is_alt %}<span class="pill pill-alt">ALT</span>{% endif %}
+        {% if group.has_dual_audio %}<span class="pill pill-dual">DUAL AUDIO</span>{% endif %}
+      </div>
+      {% for item in group.release_items %}
+        {% if item.total_count > 1 %}
+        {# Multi-part release (SeaDex groupedUrl) - several torrents that only add up to the complete release together, acts as one entry. #}
+        <div class="release-row {{ 'chosen-row' if item.chosen_count == item.total_count }}" title="{{ item.total_count }} linked releases via SeaDex's groupedUrl - Prefer/Download act on all of them together">
+          <a href="{{ item.grouped_url }}" target="_blank" rel="noopener">{{ item.total_count }} releases ({{ item.torrents[0].tracker }})</a>
+          <span class="muted">score {{ item.torrents[0] | score }}</span>
+          <span class="release-actions">
+            {% if item.chosen_count == item.total_count %}
+            <span class="pill pill-idle">chosen</span>
+            {% else %}
+            {% if item.chosen_count > 0 %}<span class="pill pill-preferred">{{ item.chosen_count }}/{{ item.total_count }} downloaded</span>{% endif %}
+            <button type="button" hx-post="/entries/{{ entry.anilist_id }}/prefer" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ item.torrents[0].id }}">Prefer</button>
+            <button type="button" hx-post="/entries/{{ entry.anilist_id }}/download" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ item.torrents[0].id }}">Download</button>
+            <button type="button" class="link-button" hx-post="/entries/{{ entry.anilist_id }}/mark-downloaded" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ item.torrents[0].id }}" title="Mark as already downloaded, without sending it to qBittorrent">Already have this</button>
+            {% endif %}
+          </span>
+        </div>
+        {% else %}
+        {% set t = item.torrents[0] %}
+        <div class="release-row {{ 'chosen-row' if t.chosen }} {{ 'row-removed' if t.removed_from_seadex }}" title="{{ t | breakdown }}">
+          <a href="{{ t.url }}" target="_blank" rel="noopener">{{ t.tracker }}</a>
+          {% if t.removed_from_seadex %}<span class="pill pill-removed">removed from SeaDex</span>{% endif %}
+          {% if t.private %}<span class="pill pill-error">private</span>{% endif %}
+          <span class="muted">{{ t.published_at[:10] if t.published_at else '—' }}</span>
+          <span class="muted">score {{ t | score }}</span>
+          <span class="release-actions">
+            {% if t.chosen %}
+            <span class="pill pill-idle">chosen</span>
+            {% elif t.removed_from_seadex %}
+            <button type="button" hx-post="/entries/{{ entry.anilist_id }}/download" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ t.id }}">Download</button>
+            <button type="button" class="link-button" hx-post="/entries/{{ entry.anilist_id }}/mark-downloaded" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ t.id }}" title="Mark as already downloaded, without sending it to qBittorrent">Already have this</button>
+            {% elif t.preferred %}
+            <span class="pill pill-preferred">preferred</span>
+            <button type="button" hx-post="/entries/{{ entry.anilist_id }}/download" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ t.id }}">Download</button>
+            <button type="button" class="link-button" hx-post="/entries/{{ entry.anilist_id }}/mark-downloaded" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ t.id }}" title="Mark as already downloaded, without sending it to qBittorrent">Already have this</button>
+            {% else %}
+            <button type="button" hx-post="/entries/{{ entry.anilist_id }}/prefer" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ t.id }}">Prefer</button>
+            <button type="button" hx-post="/entries/{{ entry.anilist_id }}/download" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ t.id }}">Download</button>
+            <button type="button" class="link-button" hx-post="/entries/{{ entry.anilist_id }}/mark-downloaded" hx-target="closest .entry" hx-swap="outerHTML" name="torrent_id" value="{{ t.id }}" title="Mark as already downloaded, without sending it to qBittorrent">Already have this</button>
+            {% endif %}
+          </span>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No torrents found yet for this entry.</p>
+  {% endif %}
+
+  {% if entry.notes %}
+  <p class="entry-notes">{{ entry.notes }}</p>
+  {% endif %}
+</div>

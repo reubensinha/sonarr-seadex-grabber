@@ -14,7 +14,23 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from .cache import load_json, save_json
-from .config import SETTINGS_FILE, SYNC_INTERVAL, SYNC_INTERVAL_LOCKED
+from .config import (
+    QB_CATEGORY,
+    QB_CATEGORY_LOCKED,
+    QB_PASS,
+    QB_PASS_LOCKED,
+    QB_URL,
+    QB_URL_LOCKED,
+    QB_USER,
+    QB_USER_LOCKED,
+    SETTINGS_FILE,
+    SONARR_API_KEY,
+    SONARR_API_KEY_LOCKED,
+    SONARR_URL,
+    SONARR_URL_LOCKED,
+    SYNC_INTERVAL,
+    SYNC_INTERVAL_LOCKED,
+)
 from .utils import log
 
 # Serializes full/partial sync runs so at most one is ever in flight.
@@ -23,6 +39,19 @@ SYNC_LOCK = threading.Lock()
 # Guards direct known_series.json read-modify-write cycles performed by the
 # WebUI's data-correction routes (ignore toggle, torrent override, etc).
 DATA_LOCK = threading.Lock()
+
+# Guards against an accidental near-zero value hammering Seadex/AniList/
+# Sonarr - only applies to a positive value, a deliberate 0 bypasses it.
+_MIN_SYNC_INTERVAL_SECONDS = 300  # 5 minutes
+
+
+def clamp_sync_interval_hours(hours: float) -> int:
+    """Convert a Settings-page hours value to seconds. 0 (or negative) means
+    "disabled" and passes through unclamped; any positive value is floored
+    to _MIN_SYNC_INTERVAL_SECONDS."""
+    if hours <= 0:
+        return 0
+    return max(int(hours * 3600), _MIN_SYNC_INTERVAL_SECONDS)
 
 
 def get_sync_interval() -> int:
@@ -53,6 +82,79 @@ def set_sync_interval(seconds: int) -> bool:
         save_json(SETTINGS_FILE, overrides)
     log(f"Sync interval changed to {seconds} seconds")
     return True
+
+
+def _get_runtime_value(settings_key: str, locked: bool, static_value):
+    """Shared precedence for a single Settings-page-adjustable value: an
+    env-var lock wins outright; otherwise a settings.json override if one
+    has been set, else the config.yaml/default value. Mirrors
+    get_sync_interval's precedence, generalized to any field."""
+    if locked:
+        return static_value
+    overrides = load_json(SETTINGS_FILE, default={})
+    return overrides.get(settings_key, static_value)
+
+
+def _set_runtime_value(settings_key: str, locked: bool, value, label: str) -> bool:
+    """Shared write path for a single Settings-page-adjustable value.
+    Refuses (returns False, no write) if locked."""
+    if locked:
+        log(f"Refusing to change {label} - locked via environment variable")
+        return False
+    with DATA_LOCK:
+        overrides = load_json(SETTINGS_FILE, default={})
+        overrides[settings_key] = value
+        save_json(SETTINGS_FILE, overrides)
+    log(f"{label} changed")
+    return True
+
+
+def get_sonarr_url() -> str | None:
+    return _get_runtime_value("sonarr_url", SONARR_URL_LOCKED, SONARR_URL)
+
+
+def set_sonarr_url(value: str) -> bool:
+    return _set_runtime_value("sonarr_url", SONARR_URL_LOCKED, value, "Sonarr URL")
+
+
+def get_sonarr_api_key() -> str | None:
+    return _get_runtime_value("sonarr_api_key", SONARR_API_KEY_LOCKED, SONARR_API_KEY)
+
+
+def set_sonarr_api_key(value: str) -> bool:
+    return _set_runtime_value("sonarr_api_key", SONARR_API_KEY_LOCKED, value, "Sonarr API key")
+
+
+def get_qb_url() -> str | None:
+    return _get_runtime_value("qb_url", QB_URL_LOCKED, QB_URL)
+
+
+def set_qb_url(value: str) -> bool:
+    return _set_runtime_value("qb_url", QB_URL_LOCKED, value, "qBittorrent URL")
+
+
+def get_qb_user() -> str | None:
+    return _get_runtime_value("qb_user", QB_USER_LOCKED, QB_USER)
+
+
+def set_qb_user(value: str) -> bool:
+    return _set_runtime_value("qb_user", QB_USER_LOCKED, value, "qBittorrent username")
+
+
+def get_qb_pass() -> str | None:
+    return _get_runtime_value("qb_pass", QB_PASS_LOCKED, QB_PASS)
+
+
+def set_qb_pass(value: str) -> bool:
+    return _set_runtime_value("qb_pass", QB_PASS_LOCKED, value, "qBittorrent password")
+
+
+def get_qb_category() -> str | None:
+    return _get_runtime_value("qb_category", QB_CATEGORY_LOCKED, QB_CATEGORY)
+
+
+def set_qb_category(value: str) -> bool:
+    return _set_runtime_value("qb_category", QB_CATEGORY_LOCKED, value, "qBittorrent category")
 
 
 @dataclass

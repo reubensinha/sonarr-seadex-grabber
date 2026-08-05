@@ -1,32 +1,22 @@
-"""Client for interacting with qBittorrent API."""
+"""Client for interacting with qBittorrent via the qbittorrent-api package -
+handles CSRF headers, auth/session mechanics, and API-version differences
+for us instead of us hand-rolling qBittorrent's raw Web API.
+"""
+import qbittorrentapi
 
-import requests
-
-from core.config import QB_CATEGORY, QB_PASS, QB_URL, QB_USER
+from core import sync_manager
 from core.utils import log
 
-session = requests.Session()
 
-
-def qb_authenticate() -> bool:
-    """Authenticate with qBittorrent. Returns True on success, False otherwise."""
-    try:
-        resp = session.post(
-            f"{QB_URL}/api/v2/auth/login",
-            data={"username": QB_USER, "password": QB_PASS},
-            # qBittorrent 4.1+ rejects the login POST as a CSRF protection
-            # measure unless Referer/Origin match its own host - independent
-            # of whether the credentials themselves are correct.
-            headers={"Referer": str(QB_URL), "Origin": str(QB_URL)},
-        )
-        if resp.text.strip() != "Ok.":
-            log("qBittorrent auth error: login failed (unexpected response)")
-            return False
-        log("Authenticated with qBittorrent")
-        return True
-    except Exception as e:
-        log(f"qBittorrent auth error: {e}")
-        return False
+def _get_client() -> qbittorrentapi.Client:
+    """A fresh Client per call, reading the dynamic connection-settings
+    getters each time (not cached) - so a change from the Settings page
+    takes effect immediately, without a restart."""
+    return qbittorrentapi.Client(
+        host=sync_manager.get_qb_url(),
+        username=sync_manager.get_qb_user(),
+        password=sync_manager.get_qb_pass(),
+    )
 
 
 def send_to_qbittorrent(info_hash, is_private=False, torrent_url=None) -> bool:
@@ -34,11 +24,10 @@ def send_to_qbittorrent(info_hash, is_private=False, torrent_url=None) -> bool:
 
     Returns True only if the torrent was actually submitted successfully.
     """
-    if not qb_authenticate():
-        log("Skipping submission - qBittorrent authentication failed")
-        return False
-
-    # Handle private torrents differently
+    # Checked first, before ever attempting to connect - a private/redacted
+    # torrent is skipped regardless, so there's no reason to spend a login
+    # attempt on it. Fewer unnecessary attempts also matters given
+    # qBittorrent auto-bans an IP after too many failed logins.
     if is_private or info_hash == "<redacted>":
         if torrent_url:
             log(
@@ -50,22 +39,43 @@ def send_to_qbittorrent(info_hash, is_private=False, torrent_url=None) -> bool:
             log("Private torrent with redacted hash and no URL - skipping")
             return False
 
+    client = _get_client()
+    try:
+        client.auth_log_in()
+    except qbittorrentapi.Forbidden403Error:
+        log(
+            "qBittorrent auth error: forbidden - this usually means qBittorrent has "
+            "banned this IP after too many failed login attempts (Options > Web UI > "
+            "\"Ban client after consecutive failures\"). Wait out the ban or clear it "
+            "in qBittorrent's settings - a credential fix alone won't clear an active ban."
+        )
+        return False
+    except qbittorrentapi.LoginFailed:
+        log("qBittorrent auth error: login failed - check the configured username/password")
+        return False
+    except qbittorrentapi.APIConnectionError as e:
+        log(f"qBittorrent auth error: could not connect - {e}")
+        return False
+
+    log("Authenticated with qBittorrent")
+
     magnet_link = f"magnet:?xt=urn:btih:{info_hash}"
-
-    # Prepare data for torrent submission
-    data = {"urls": magnet_link}
-
-    # Add category if configured
-    if QB_CATEGORY:
-        data["category"] = QB_CATEGORY
+    qb_category = sync_manager.get_qb_category()
 
     try:
-        resp = session.post(f"{QB_URL}/api/v2/torrents/add", data=data)
-        resp.raise_for_status()
-
-        category_msg = f" to category '{QB_CATEGORY}'" if QB_CATEGORY else ""
-        log(f"Submitted magnet to qBittorrent{category_msg}: {magnet_link}")
-        return True
-    except requests.RequestException as e:
+        result = client.torrents_add(urls=magnet_link, category=qb_category or None)
+    except qbittorrentapi.APIError as e:
         log(f"Failed to submit torrent: {e}")
         return False
+
+    # Older qBittorrent (pre-API v2.14.0) replies with plain "Ok."/"Fails."
+    # text; newer versions return structured metadata on success and raise
+    # an exception (already handled above) on failure instead - so any
+    # non-string result here already means success.
+    if isinstance(result, str) and result.strip() != "Ok.":
+        log(f"qBittorrent reported failure adding the torrent: {result!r}")
+        return False
+
+    category_msg = f" to category '{qb_category}'" if qb_category else ""
+    log(f"Submitted magnet to qBittorrent{category_msg}: {magnet_link}")
+    return True
