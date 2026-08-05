@@ -5,29 +5,25 @@
 <section class="card">
   <h2>Sonarr connection</h2>
 
-  {% if sonarr_url_locked and sonarr_api_key_locked %}
-  <p class="muted">Set via the <code>SONARR_URL</code>/<code>SONARR_API_KEY</code> environment variables - locked, cannot be changed here.</p>
-  {% else %}
   <form method="post" action="/settings/sonarr">
     <div class="settings-field">
-      <label class="muted" for="sonarr-url-input">URL</label>
-      {% if sonarr_url_locked %}
-      <p class="muted">{{ sonarr_url }} (locked via <code>SONARR_URL</code> environment variable)</p>
-      {% else %}
-      <input type="text" id="sonarr-url-input" name="sonarr_url" value="{{ sonarr_url }}" placeholder="http://your-sonarr-host:8989">
-      {% endif %}
+      <label for="sonarr-url-input">URL {% if sonarr_url_locked %}<span class="pill pill-locked">locked</span>{% endif %}</label>
+      <input type="text" id="sonarr-url-input" name="sonarr_url" value="{{ sonarr_url }}" placeholder="http://your-sonarr-host:8989" {% if sonarr_url_locked %}disabled{% endif %}>
+      {% if sonarr_url_locked %}<span class="locked-hint">Set via the <code>SONARR_URL</code> environment variable - cannot be changed here.</span>{% endif %}
     </div>
     <div class="settings-field">
-      <label class="muted" for="sonarr-api-key-input">API key</label>
+      <label for="sonarr-api-key-input">API key {% if sonarr_api_key_locked %}<span class="pill pill-locked">locked</span>{% endif %}</label>
       {% if sonarr_api_key_locked %}
-      <p class="muted">Locked via <code>SONARR_API_KEY</code> environment variable.</p>
+      <input type="password" id="sonarr-api-key-input" value="********" disabled>
+      <span class="locked-hint">Set via the <code>SONARR_API_KEY</code> environment variable - cannot be changed here.</span>
       {% else %}
       <input type="password" id="sonarr-api-key-input" name="sonarr_api_key" placeholder="{{ 'leave blank to keep current' if sonarr_api_key_set else 'not set - enter your Sonarr API key' }}">
       {% endif %}
     </div>
+    {% if not (sonarr_url_locked and sonarr_api_key_locked) %}
     <button type="submit" class="primary">Save</button>
+    {% endif %}
   </form>
-  {% endif %}
   {% if not (sonarr_url and sonarr_api_key_set) %}
   <p class="muted">Not fully configured yet - the app can't reach Sonarr until both fields are set.</p>
   {% endif %}
@@ -36,45 +32,35 @@
 <section class="card">
   <h2>qBittorrent connection</h2>
 
-  {% if qb_url_locked and qb_user_locked and qb_pass_locked %}
-  <p class="muted">Set via the <code>QB_URL</code>/<code>QB_USER</code>/<code>QB_PASS</code> environment variables - locked, cannot be changed here.</p>
-  {% else %}
   <form method="post" action="/settings/qbittorrent">
     <div class="settings-field">
-      <label class="muted" for="qb-url-input">URL</label>
-      {% if qb_url_locked %}
-      <p class="muted">{{ qb_url }} (locked via <code>QB_URL</code> environment variable)</p>
-      {% else %}
-      <input type="text" id="qb-url-input" name="qb_url" value="{{ qb_url }}" placeholder="http://your-qbittorrent-host:8080">
-      {% endif %}
+      <label for="qb-url-input">URL {% if qb_url_locked %}<span class="pill pill-locked">locked</span>{% endif %}</label>
+      <input type="text" id="qb-url-input" name="qb_url" value="{{ qb_url }}" placeholder="http://your-qbittorrent-host:8080" {% if qb_url_locked %}disabled{% endif %}>
+      {% if qb_url_locked %}<span class="locked-hint">Set via the <code>QB_URL</code> environment variable - cannot be changed here.</span>{% endif %}
     </div>
     <div class="settings-field">
-      <label class="muted" for="qb-user-input">Username</label>
-      {% if qb_user_locked %}
-      <p class="muted">{{ qb_user }} (locked via <code>QB_USER</code> environment variable)</p>
-      {% else %}
-      <input type="text" id="qb-user-input" name="qb_user" value="{{ qb_user }}">
-      {% endif %}
+      <label for="qb-user-input">Username {% if qb_user_locked %}<span class="pill pill-locked">locked</span>{% endif %}</label>
+      <input type="text" id="qb-user-input" name="qb_user" value="{{ qb_user }}" {% if qb_user_locked %}disabled{% endif %}>
+      {% if qb_user_locked %}<span class="locked-hint">Set via the <code>QB_USER</code> environment variable - cannot be changed here.</span>{% endif %}
     </div>
     <div class="settings-field">
-      <label class="muted" for="qb-pass-input">Password</label>
+      <label for="qb-pass-input">Password {% if qb_pass_locked %}<span class="pill pill-locked">locked</span>{% endif %}</label>
       {% if qb_pass_locked %}
-      <p class="muted">Locked via <code>QB_PASS</code> environment variable.</p>
+      <input type="password" id="qb-pass-input" value="********" disabled>
+      <span class="locked-hint">Set via the <code>QB_PASS</code> environment variable - cannot be changed here.</span>
       {% else %}
       <input type="password" id="qb-pass-input" name="qb_pass" placeholder="{{ 'leave blank to keep current' if qb_pass_set else 'not set - enter your qBittorrent password' }}">
       {% endif %}
     </div>
     <div class="settings-field">
-      <label class="muted" for="qb-category-input">Category</label>
-      {% if qb_category_locked %}
-      <p class="muted">{{ qb_category }} (locked via <code>QB_CATEGORY</code> environment variable)</p>
-      {% else %}
-      <input type="text" id="qb-category-input" name="qb_category" value="{{ qb_category }}" placeholder="anime-sonarr">
-      {% endif %}
+      <label for="qb-category-input">Category {% if qb_category_locked %}<span class="pill pill-locked">locked</span>{% endif %}</label>
+      <input type="text" id="qb-category-input" name="qb_category" value="{{ qb_category }}" placeholder="anime-sonarr" {% if qb_category_locked %}disabled{% endif %}>
+      {% if qb_category_locked %}<span class="locked-hint">Set via the <code>QB_CATEGORY</code> environment variable - cannot be changed here.</span>{% endif %}
     </div>
+    {% if not (qb_url_locked and qb_user_locked and qb_pass_locked and qb_category_locked) %}
     <button type="submit" class="primary">Save</button>
+    {% endif %}
   </form>
-  {% endif %}
   {% if not (qb_url and qb_user and qb_pass_set) %}
   <p class="muted">Not fully configured yet - the app can't reach qBittorrent until URL, username, and password are all set.</p>
   {% endif %}
@@ -83,22 +69,21 @@
 <section class="card">
   <h2>Scheduler</h2>
 
-  {% if sync_interval_locked %}
-  <p class="muted">
-    {% if sync_interval > 0 %}
-    Currently syncing every {{ "%.1f"|format(sync_interval / 3600) }} hours.
-    {% else %}
-    Automatic sync is disabled (manual sync only).
-    {% endif %}
-    Set via the <code>SYNC_INTERVAL</code> environment variable - locked, cannot be changed here.
-  </p>
-  {% else %}
   <form method="post" action="/settings/sync-interval">
-    <label class="muted" for="hours-input">Sync every</label>
-    <input type="number" id="hours-input" name="hours" min="0" step="0.1" value="{{ '%.1f'|format(sync_interval / 3600) }}">
-    <span class="muted">hours</span>
+    <div class="settings-field">
+      <label for="hours-input">Sync every (hours) {% if sync_interval_locked %}<span class="pill pill-locked">locked</span>{% endif %}</label>
+      <input type="number" id="hours-input" name="hours" min="0" step="0.1" value="{{ '%.1f'|format(sync_interval / 3600) }}" {% if sync_interval_locked %}disabled{% endif %}>
+      {% if sync_interval_locked %}
+      <span class="locked-hint">Set via the <code>SYNC_INTERVAL</code> environment variable - cannot be changed here.</span>
+      {% endif %}
+    </div>
+    {% if not sync_interval_locked %}
     <button type="submit" class="primary">Save</button>
+    {% endif %}
   </form>
+  {% if sync_interval_locked and sync_interval <= 0 %}
+  <p class="muted">Automatic sync is disabled (manual sync only).</p>
+  {% elif not sync_interval_locked %}
   <p class="muted">Set to 0 to disable automatic sync entirely (manual sync only). Takes effect starting from the next scheduled run - won't interrupt a sync that's already waiting.</p>
   {% endif %}
 </section>

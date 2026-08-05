@@ -6,10 +6,7 @@
   {% for r in results %}
   <li>
     <span>{{ r.title }} ({{ r.season_year }}) &middot; AniList {{ r.anilist_id }}</span>
-    <form method="post" action="/series/{{ sonarr_id }}/mapping">
-      <input type="hidden" name="anilist_id" value="{{ r.anilist_id }}">
-      <button type="submit">Add</button>
-    </form>
+    <button type="button" hx-post="/series/{{ sonarr_id }}/mapping" hx-vals='{"anilist_id": "{{ r.anilist_id }}"}' hx-target="closest .card" hx-swap="outerHTML">Add</button>
   </li>
   {% endfor %}
 </ul>

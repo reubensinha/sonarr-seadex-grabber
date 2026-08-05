@@ -1,0 +1,37 @@
+<article class="card" id="series-{{ series.sonarr_id }}" data-title="{{ series.title | lower }}" data-has-mapping="{{ 'true' if series.anilist_entries else 'false' }}">
+  <div class="card-header">
+    {% if sonarr_url and series.title_slug %}
+    <h3><a href="{{ sonarr_url }}/series/{{ series.title_slug }}" target="_blank" rel="noopener">{{ series.title }}</a></h3>
+    {% else %}
+    <h3>{{ series.title }}</h3>
+    {% endif %}
+    <span class="muted">Sonarr ID {{ series.sonarr_id }}{% if series.tvdb_id %} &middot; TVDB {{ series.tvdb_id }}{% endif %} &middot; {{ series.num_seasons }} season(s)</span>
+    <button type="button" class="link-button" hx-get="/series/{{ series.sonarr_id }}/sonarr-history" hx-trigger="click" hx-swap="outerHTML">Show Sonarr history</button>
+    <button type="button" hx-post="/series/{{ series.sonarr_id }}/sync" hx-target="closest .card" hx-swap="outerHTML">Resync this series</button>
+    <button type="button" hx-post="/series/{{ series.sonarr_id }}/research" hx-target="closest .card" hx-swap="outerHTML">Re-search Seadex</button>
+    {% set all_paused = series.anilist_entries and series.anilist_entries | rejectattr('ignore') | list | length == 0 %}
+    {% if all_paused %}
+    <span class="pill pill-error">paused</span>
+    <button type="button" hx-post="/series/{{ series.sonarr_id }}/resume" hx-target="closest .card" hx-swap="outerHTML">Resume show</button>
+    {% elif series.anilist_entries %}
+    <button type="button" hx-post="/series/{{ series.sonarr_id }}/pause" hx-target="closest .card" hx-swap="outerHTML" title="Stops auto-downloading new/alternate releases for every currently-known season. Future seasons are still picked up automatically. Doesn't touch Sonarr's monitoring.">Pause show</button>
+    {% endif %}
+  </div>
+
+  {% if not series.anilist_entries %}
+  <p class="muted">No AniList mapping found yet.</p>
+  {% endif %}
+
+  {% for entry in series.anilist_entries %}
+    {% include "partials/entry.html" %}
+  {% endfor %}
+
+  <div class="mapping-search">
+    <input type="text" name="q" placeholder="Search AniList to add a mapping..."
+           hx-get="/series/{{ series.sonarr_id }}/mapping/search"
+           hx-trigger="keyup changed delay:400ms"
+           hx-target="#mapping-results-{{ series.sonarr_id }}"
+           hx-swap="innerHTML">
+    <div id="mapping-results-{{ series.sonarr_id }}" class="mapping-results"></div>
+  </div>
+</article>

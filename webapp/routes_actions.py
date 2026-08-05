@@ -7,10 +7,17 @@ lookup) - so it stays a fast, short-held lock as intended by sync_manager.
 Routes that mutate state check sync_manager.is_busy() first and simply
 decline (with a flash-style message) while a sync is running, rather than
 attempting fine-grained merge logic against an in-flight sync.
+
+Entry-level and series-level routes render and return an HTML fragment
+(partials/entry.html or partials/series_card.html) instead of redirecting -
+lets the dashboard swap just the affected card/entry via htmx instead of a
+full page reload that resets scroll position on every click. The one
+exception is the global "Sync Now" route, which can add/remove series
+entirely, so a full reload is genuinely correct there.
 """
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from clients.anilist_client import AniListClient
 from clients.sonarr_client import SonarrClient
@@ -45,6 +52,18 @@ def _find_series(known_series: list[Series], sonarr_id: int) -> Series | None:
     return next((s for s in known_series if s.sonarr_id == sonarr_id), None)
 
 
+def _render_card(request: Request, series: Series) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "partials/series_card.html",
+        {"series": series, "sonarr_url": sync_manager.get_sonarr_url()},
+    )
+
+
+def _render_entry(request: Request, entry: AniListSeries) -> HTMLResponse:
+    return templates.TemplateResponse(request, "partials/entry.html", {"entry": entry})
+
+
 @router.post("/sync")
 def trigger_full_sync():
     if not sync_manager.run_full_sync(trigger_source="manual"):
@@ -53,140 +72,132 @@ def trigger_full_sync():
 
 
 @router.post("/series/{sonarr_id}/sync")
-def trigger_series_sync(sonarr_id: int):
+def trigger_series_sync(request: Request, sonarr_id: int):
     if not sync_manager.run_single_series_sync(sonarr_id, trigger_source="manual"):
         log(f"Manual resync for series {sonarr_id} ignored - a sync is already in progress")
-    return RedirectResponse("/", status_code=303)
+    known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
+    series = _find_series(known_series, sonarr_id)
+    return _render_card(request, series) if series is not None else HTMLResponse("")
 
 
 @router.post("/series/{sonarr_id}/research")
-def trigger_series_research(sonarr_id: int):
+def trigger_series_research(request: Request, sonarr_id: int):
     if not sync_manager.run_research_series(sonarr_id, trigger_source="manual"):
         log(f"Manual re-search for series {sonarr_id} ignored - a sync is already in progress")
-    return RedirectResponse("/", status_code=303)
+    known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
+    series = _find_series(known_series, sonarr_id)
+    return _render_card(request, series) if series is not None else HTMLResponse("")
 
 
 @router.post("/series/{sonarr_id}/pause")
-def pause_series_route(sonarr_id: int):
-    if sync_manager.is_busy():
-        log(f"Pause request for series {sonarr_id} rejected - sync in progress")
-        return RedirectResponse("/", status_code=303)
-
+def pause_series_route(request: Request, sonarr_id: int):
     with sync_manager.DATA_LOCK:
         known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
         series = _find_series(known_series, sonarr_id)
-        if series is not None:
+        if sync_manager.is_busy():
+            log(f"Pause request for series {sonarr_id} rejected - sync in progress")
+        elif series is not None:
             pause_series(series)
             save_json(KNOWN_SERIES_FILE, known_series)
 
-    return RedirectResponse("/", status_code=303)
+    return _render_card(request, series) if series is not None else HTMLResponse("")
 
 
 @router.post("/series/{sonarr_id}/resume")
-def resume_series_route(sonarr_id: int):
-    if sync_manager.is_busy():
-        log(f"Resume request for series {sonarr_id} rejected - sync in progress")
-        return RedirectResponse("/", status_code=303)
-
+def resume_series_route(request: Request, sonarr_id: int):
     with sync_manager.DATA_LOCK:
         known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
         series = _find_series(known_series, sonarr_id)
-        if series is not None:
+        if sync_manager.is_busy():
+            log(f"Resume request for series {sonarr_id} rejected - sync in progress")
+        elif series is not None:
             resume_series(series)
             save_json(KNOWN_SERIES_FILE, known_series)
 
-    return RedirectResponse("/", status_code=303)
+    return _render_card(request, series) if series is not None else HTMLResponse("")
 
 
 @router.post("/entries/{anilist_id}/ignore")
-def toggle_ignore(anilist_id: int):
-    if sync_manager.is_busy():
-        log(f"Ignore toggle for AniList ID {anilist_id} rejected - sync in progress")
-        return RedirectResponse("/", status_code=303)
-
+def toggle_ignore(request: Request, anilist_id: int):
     with sync_manager.DATA_LOCK:
         known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
-        _, entry = _find_entry(known_series, anilist_id)
-        if entry is not None:
+        series, entry = _find_entry(known_series, anilist_id)
+        if sync_manager.is_busy():
+            log(f"Ignore toggle for AniList ID {anilist_id} rejected - sync in progress")
+        elif entry is not None:
             entry.ignore = not entry.ignore
             log(f"AniList entry {anilist_id} ignore set to {entry.ignore}")
             save_json(KNOWN_SERIES_FILE, known_series)
 
-    return RedirectResponse("/", status_code=303)
+    # Card-level swap, not just the entry - toggling the last non-ignored
+    # entry flips the whole series' "paused" pill/button too.
+    return _render_card(request, series) if series is not None else HTMLResponse("")
 
 
 @router.post("/entries/{anilist_id}/download")
-def download_torrent(anilist_id: int, torrent_id: str = Form(...)):
-    if sync_manager.is_busy():
-        log(f"Manual download for AniList ID {anilist_id} rejected - sync in progress")
-        return RedirectResponse("/", status_code=303)
-
-    # Unlocked read + qBittorrent submit (network I/O), then a locked save -
-    # mirrors update_single_series's read/act/save pattern.
+def download_torrent(request: Request, anilist_id: int, torrent_id: str = Form(...)):
     known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
     _, entry = _find_entry(known_series, anilist_id)
-    if entry is not None:
+
+    if sync_manager.is_busy():
+        log(f"Manual download for AniList ID {anilist_id} rejected - sync in progress")
+    elif entry is not None:
         torrent = next((t for t in entry.torrents if t.id == torrent_id), None)
         if torrent is not None:
             # A multi-part release (Trs.grouped_url) is downloaded as a
-            # whole - expand to every current part of it.
+            # whole - expand to every current part of it. Unlocked read +
+            # qBittorrent submit (network I/O), then a locked save - mirrors
+            # update_single_series's read/act/save pattern.
             apply_chosen_torrents(entry, group_siblings(entry, torrent))
             with sync_manager.DATA_LOCK:
                 save_json(KNOWN_SERIES_FILE, known_series)
 
-    return RedirectResponse("/", status_code=303)
+    return _render_entry(request, entry) if entry is not None else HTMLResponse("")
 
 
 @router.post("/entries/{anilist_id}/prefer")
-def prefer_torrent(anilist_id: int, torrent_id: str = Form(...)):
-    if sync_manager.is_busy():
-        log(f"Manual preference for AniList ID {anilist_id} rejected - sync in progress")
-        return RedirectResponse("/", status_code=303)
-
+def prefer_torrent(request: Request, anilist_id: int, torrent_id: str = Form(...)):
     # Pure in-memory, no network call - fits entirely inside DATA_LOCK.
     with sync_manager.DATA_LOCK:
         known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
         _, entry = _find_entry(known_series, anilist_id)
-        if entry is not None:
+        if sync_manager.is_busy():
+            log(f"Manual preference for AniList ID {anilist_id} rejected - sync in progress")
+        elif entry is not None:
             torrent = next((t for t in entry.torrents if t.id == torrent_id), None)
             if torrent is not None and set_preferred_torrents(
                 entry, group_siblings(entry, torrent)
             ):
                 save_json(KNOWN_SERIES_FILE, known_series)
 
-    return RedirectResponse("/", status_code=303)
+    return _render_entry(request, entry) if entry is not None else HTMLResponse("")
 
 
 @router.post("/entries/{anilist_id}/mark-downloaded")
-def mark_downloaded(anilist_id: int, torrent_id: str = Form(...)):
-    if sync_manager.is_busy():
-        log(f"Mark-as-downloaded for AniList ID {anilist_id} rejected - sync in progress")
-        return RedirectResponse("/", status_code=303)
-
+def mark_downloaded(request: Request, anilist_id: int, torrent_id: str = Form(...)):
     # Pure in-memory, no network call - fits entirely inside DATA_LOCK.
     with sync_manager.DATA_LOCK:
         known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
         _, entry = _find_entry(known_series, anilist_id)
-        if entry is not None:
+        if sync_manager.is_busy():
+            log(f"Mark-as-downloaded for AniList ID {anilist_id} rejected - sync in progress")
+        elif entry is not None:
             torrent = next((t for t in entry.torrents if t.id == torrent_id), None)
             if torrent is not None:
                 mark_torrents_downloaded(entry, group_siblings(entry, torrent))
                 save_json(KNOWN_SERIES_FILE, known_series)
 
-    return RedirectResponse("/", status_code=303)
+    return _render_entry(request, entry) if entry is not None else HTMLResponse("")
 
 
 @router.post("/entries/{anilist_id}/remove")
-def remove_entry(anilist_id: int):
-    if sync_manager.is_busy():
-        log(f"Remove request for AniList ID {anilist_id} rejected - sync in progress")
-        return RedirectResponse("/", status_code=303)
-
-    # Pure in-memory, no network call - fits entirely inside DATA_LOCK.
+def remove_entry(request: Request, anilist_id: int):
     with sync_manager.DATA_LOCK:
         known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
         series, entry = _find_entry(known_series, anilist_id)
-        if series is not None and entry is not None:
+        if sync_manager.is_busy():
+            log(f"Remove request for AniList ID {anilist_id} rejected - sync in progress")
+        elif series is not None and entry is not None:
             series.anilist_entries = [
                 e for e in series.anilist_entries if e.anilist_id != anilist_id
             ]
@@ -198,31 +209,32 @@ def remove_entry(anilist_id: int):
             )
             save_json(KNOWN_SERIES_FILE, known_series)
 
-    return RedirectResponse("/", status_code=303)
+    return _render_card(request, series) if series is not None else HTMLResponse("")
 
 
 @router.post("/series/{sonarr_id}/mapping")
-def add_manual_mapping(sonarr_id: int, anilist_id: int = Form(...)):
+def add_manual_mapping(request: Request, sonarr_id: int, anilist_id: int = Form(...)):
+    known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
+    target = _find_series(known_series, sonarr_id)
+
     if sync_manager.is_busy():
         log(f"Manual AniList mapping for series {sonarr_id} rejected - sync in progress")
-        return RedirectResponse("/", status_code=303)
+        return _render_card(request, target) if target is not None else HTMLResponse("")
 
     anilist = AniListClient()
     found = anilist.get_series_by_anilist_ids([anilist_id])
     if not found:
         log(f"Manual AniList mapping failed - AniList ID {anilist_id} not found")
-        return RedirectResponse("/", status_code=303)
+        return _render_card(request, target) if target is not None else HTMLResponse("")
 
     found[0].manually_added = True
 
-    known_series: list[Series] = load_json(KNOWN_SERIES_FILE, default=[])
-    target = next((s for s in known_series if s.sonarr_id == sonarr_id), None)
     if target is not None:
         target.anilist_entries = merge_anilist_ids(target.anilist_entries, found)
         with sync_manager.DATA_LOCK:
             save_json(KNOWN_SERIES_FILE, known_series)
 
-    return RedirectResponse("/", status_code=303)
+    return _render_card(request, target) if target is not None else HTMLResponse("")
 
 
 @router.get("/series/{sonarr_id}/mapping/search")
