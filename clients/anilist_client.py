@@ -68,8 +68,11 @@ class AniListClient:
             format_type = item.get("format", "")
             status = item.get("status", "")
 
-            # Skip if missing essential data
-            if not anilist_id or not season_year:
+            # Skip if missing essential data. season_year is NOT required -
+            # AniList's own schema allows a null seasonYear (donghua/CN
+            # content in particular is often not tagged with one), and
+            # dropping those here would silently exclude real results.
+            if not anilist_id:
                 continue
 
             # Filter out non-TV series formats to reduce irrelevant results
@@ -101,8 +104,10 @@ class AniListClient:
             anilist_series.append(anilist_entry)
             log(f"Found AniList entry: {title} (ID: {anilist_id}, Year: {season_year})")
 
-        # Sort by season year to get chronological order
-        anilist_series.sort(key=lambda x: x.season_year)
+        # Sort by season year to get chronological order - entries with no
+        # known year (season_year is None) sort after all known years
+        # rather than raising (None isn't orderable against int in Python).
+        anilist_series.sort(key=lambda x: (x.season_year is None, x.season_year))
 
         return anilist_series
 
@@ -223,8 +228,11 @@ class AniListClient:
             season_year = item.get("seasonYear")
             format_type = item.get("format", "")
 
-            # Skip if missing essential data
-            if not anilist_id or not season_year:
+            # Skip if missing essential data. season_year is NOT required -
+            # AniList's own schema allows a null seasonYear (donghua/CN
+            # content in particular is often not tagged with one), and
+            # dropping those here would silently exclude real results.
+            if not anilist_id:
                 continue
 
             # Filter out non-TV series formats to reduce irrelevant results
@@ -253,7 +261,9 @@ class AniListClient:
             anilist_series.append(anilist_entry)
             log(f"Found AniList entry: {title} (ID: {anilist_id}, Year: {season_year})")
 
-        # Sort by season year to get chronological order
-        anilist_series.sort(key=lambda x: x.season_year)
+        # Sort by season year to get chronological order - entries with no
+        # known year (season_year is None) sort after all known years
+        # rather than raising (None isn't orderable against int in Python).
+        anilist_series.sort(key=lambda x: (x.season_year is None, x.season_year))
 
         return anilist_series

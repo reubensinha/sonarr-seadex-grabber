@@ -125,8 +125,11 @@ def merge_anilist_ids(
             merged_entries.append(found_entry)
             log(f"Added new AniList entry: {found_entry.title} (ID: {anilist_id})")
 
-    # Sort by season year for consistency
-    merged_entries.sort(key=lambda x: x.season_year)
+    # Sort by season year for consistency - entries with no known year
+    # (season_year is None, e.g. some donghua/CN-origin anime AniList
+    # doesn't tag with a broadcast season) sort after all known years
+    # rather than raising (None isn't orderable against int in Python).
+    merged_entries.sort(key=lambda x: (x.season_year is None, x.season_year))
 
     return merged_entries
 

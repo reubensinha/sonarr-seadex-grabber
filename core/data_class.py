@@ -52,7 +52,10 @@ class AniListSeries:
 
     anilist_id: int
     title: str
-    season_year: int
+    # AniList's own schema allows a null seasonYear - some content (notably
+    # donghua/CN-origin anime) genuinely isn't tagged with a broadcast
+    # season, so this can't be assumed present.
+    season_year: int | None
     torrents: list[Trs] = field(default_factory=list)
     manually_added: bool = False
     ignore: bool = False

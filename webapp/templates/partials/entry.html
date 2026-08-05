@@ -12,7 +12,7 @@
   <div class="entry-header">
     <a class="entry-title" href="https://anilist.co/anime/{{ entry.anilist_id }}" target="_blank" rel="noopener">{{ entry.title }}</a>
     <a class="muted" href="https://releases.moe/{{ entry.anilist_id }}/" target="_blank" rel="noopener">SeaDex</a>
-    <span class="muted">({{ entry.season_year }}) &middot; AniList {{ entry.anilist_id }} &middot; updated {{ entry.seadex_updated_at[:10] if entry.seadex_updated_at else '—' }}</span>
+    <span class="muted">({{ entry.season_year if entry.season_year else '—' }}) &middot; AniList {{ entry.anilist_id }} &middot; updated {{ entry.seadex_updated_at[:10] if entry.seadex_updated_at else '—' }}</span>
     {% if chosen_torrents %}
     <span class="pill pill-idle">chosen: {{ chosen_torrents[0].release_group or chosen_torrents[0].tracker }}{% if chosen_torrents | length > 1 %} ({{ chosen_torrents | length }} parts){% endif %}</span>
     {% endif %}
