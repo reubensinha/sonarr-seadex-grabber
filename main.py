@@ -134,6 +134,36 @@ def merge_anilist_ids(
     return merged_entries
 
 
+def add_manual_anilist_entry(series_item: Series, new_entry: AniListSeries) -> None:
+    """Add a single manually-specified AniList entry to series_item (or mark
+    it manually_added if already known) without touching any other entry.
+
+    Deliberately NOT built on merge_anilist_ids - that function assumes
+    found_entries is a *complete* fresh search result and drops anything
+    known but absent from it, which is correct for refresh_anilist_mapping
+    but wrong here: a single manual addition would look like "everything
+    else disappeared" and wipe out every auto-matched entry.
+    """
+    existing = next(
+        (e for e in series_item.anilist_entries if e.anilist_id == new_entry.anilist_id), None
+    )
+    if existing is not None:
+        existing.manually_added = True
+        log(
+            f"AniList entry {new_entry.anilist_id} already known for "
+            f"'{series_item.title}' - marked manually added"
+        )
+        return
+
+    new_entry.manually_added = True
+    series_item.anilist_entries.append(new_entry)
+    series_item.anilist_entries.sort(key=lambda x: (x.season_year is None, x.season_year))
+    log(
+        f"Manually added AniList entry {new_entry.anilist_id} "
+        f"({new_entry.title}) to '{series_item.title}'"
+    )
+
+
 def score_torrent(torrent: Trs) -> int:
     """Score a torrent based on configurable weights for is_best, dual_audio, and tracker."""
     score = 0

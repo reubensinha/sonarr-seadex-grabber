@@ -27,10 +27,10 @@ from core.config import KNOWN_SERIES_FILE
 from core.data_class import AniListSeries, Series
 from core.utils import log
 from main import (
+    add_manual_anilist_entry,
     apply_chosen_torrents,
     group_siblings,
     mark_torrents_downloaded,
-    merge_anilist_ids,
     pause_series,
     resume_series,
     set_preferred_torrents,
@@ -227,10 +227,8 @@ def add_manual_mapping(request: Request, sonarr_id: int, anilist_id: int = Form(
         log(f"Manual AniList mapping failed - AniList ID {anilist_id} not found")
         return _render_card(request, target) if target is not None else HTMLResponse("")
 
-    found[0].manually_added = True
-
     if target is not None:
-        target.anilist_entries = merge_anilist_ids(target.anilist_entries, found)
+        add_manual_anilist_entry(target, found[0])
         with sync_manager.DATA_LOCK:
             save_json(KNOWN_SERIES_FILE, known_series)
 

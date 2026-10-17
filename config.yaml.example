@@ -37,8 +37,8 @@ anilist:
 
 # Seadex configuration
 seadex:
-  collections_url: "https://releases.moe/api/collections/entries/records" # Set via COLLECTIONS_URL environment variable
-  torrent_url: "https://releases.moe/api/collections/torrents/records" # Set via TORRENT_URL environment variable
+  collections_url: "https://seadex.moe/api/collections/entries/records" # Set via COLLECTIONS_URL environment variable
+  torrent_url: "https://seadex.moe/api/collections/torrents/records" # Set via TORRENT_URL environment variable
 
 # Torrent scoring configuration
 scoring:

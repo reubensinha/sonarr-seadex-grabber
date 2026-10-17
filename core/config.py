@@ -135,12 +135,12 @@ ANILIST_API_URL = get_env_or_config(
 COLLECTIONS_URL = get_env_or_config(
     "COLLECTIONS_URL",
     get_nested_config(_config, ["seadex", "collections_url"]),
-    "https://releases.moe/api/collections/entries/records",
+    "https://seadex.moe/api/collections/entries/records",
 )
 TORRENT_URL = get_env_or_config(
     "TORRENT_URL",
     get_nested_config(_config, ["seadex", "torrent_url"]),
-    "https://releases.moe/api/collections/torrents/records",
+    "https://seadex.moe/api/collections/torrents/records",
 )
 
 # Scoring
